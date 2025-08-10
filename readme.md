@@ -15,6 +15,7 @@ Eu vou tentar responder as seguintes perguntas:
 - [ ] Montar um payload para popular o banco de dados Postgres
 - [ ] Criar um job que consome as mensagens com o payload do cenário
 - [ ] Consumir os 1 milhão de mensagens do Kafka e popular o banco de dados Postgres
+- [ ] Criar um benchmark para medir o tempo de processamento
 
 # Cenário
 
