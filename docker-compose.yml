@@ -1,0 +1,106 @@
+services:
+  kafka:
+    image: apache/kafka:latest
+    container_name: kafka
+    hostname: kafka
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      KAFKA_LISTENERS: PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    ports:
+      - "9092:9092"
+    volumes:
+      - ./kafka-logs:/tmp/kraft-combined-logs
+    healthcheck:
+      test: ["CMD", "/opt/kafka/bin/kafka-topics.sh", "--bootstrap-server", "kafka:9092", "--list"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092
+    ports:
+      - "8080:8080"
+    depends_on:
+      - kafka
+
+  producer:
+    build:
+      context: ./producer
+      dockerfile: Dockerfile
+    container_name: kafka-producer
+    environment:
+      BOOTSTRAP_SERVERS: kafka:29092
+      TOPIC: jobs
+      MSGS: 1000
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17
+    container_name: postgres
+    hostname: postgres
+    environment:
+      POSTGRES_USER: bench
+      POSTGRES_PASSWORD: bench
+      POSTGRES_DB: bench
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bench"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  mri:
+    build:
+      context: ./rails-mri
+      dockerfile: Dockerfile
+    container_name: karafka
+    working_dir: /app
+    volumes:
+      - ./rails-mri:/app
+    environment:
+      RAILS_ENV: development
+      DATABASE_URL: postgres://bench:bench@postgres:5432/bench
+      KAFKA_BROKERS: kafka:29092
+      KARAFKA_GROUP_ID: g1
+      TOPIC: jobs
+      BATCH_SIZE: "200"
+      PARTITIONS: "12"
+      REPLICATION_FACTOR: "1" # Sem replicação para simplificar o ambiente
+      CLEANUP_POLICY: compact # compact or delete
+      RETENTION_MS: "604800000" # 7 days
+      SEGMENT_BYTES: "1073741824" # 1 GB
+      MAX_MESSAGE_BYTES: "10485760" # 10 MB
+      COMPRESSION_TYPE: gzip
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    # Garante que o schema exista antes de consumir
+    command: >
+      bash -lc "
+        (bundle check || bundle install) &&
+        bin/rails db:prepare &&
+        bundle exec karafka server
+      "
+    restart: unless-stopped
