@@ -13,8 +13,8 @@ Eu vou tentar responder as seguintes perguntas:
 - [x] Criar um producer de teste para enviar mensagens ao Kafka
 - [x] Criar um consumer de teste com Ruby (usando MRI) para consumir mensagens do Kafka
 - [ ] Montar um payload para popular o banco de dados Postgres
-- [ ] Criar um job que consome mensagens do Kafka e popula o banco de dados Postgres
-
+- [ ] Criar um job que consome as mensagens com o payload do cenário
+- [ ] Consumir os 1 milhão de mensagens do Kafka e popular o banco de dados Postgres
 
 # Cenário
 
