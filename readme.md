@@ -1,6 +1,14 @@
-# Objetivo
+# Cenário
 
-Em certa empresa tenho 1 milhão de mensagem para processar, o CRuby ( Ruby MRI ) esta processando por 8 dias e ainda não terminou.
+Uma empresa possui diversos totens de autoatendimento, e cada totem envia mensagens para um tópico Kafka. Essas mensagens são processadas por um job que popula um banco de dados Postgres.
+
+A cada 15 minutos, cada totem envia cerca de 25 mensagens. Em um shopping, há cerca de 10 totens, então a cada 15 minutos temos aproximadamente 250 mensagens para processar.
+
+A empresa possui 100 shoppings, então a cada 15 minutos temos cerca de 25.000 mensagens para processar, totalizando aproximadamente 100.000 mensagens por hora.
+
+Por algum motivo, o serviço caiu por 10 horas, e as mensagens não foram processadas. Agora, o serviço foi reiniciado e está tentando processar todas as mensagens acumuladas.
+
+Temos 1 milhão de mensagens para processar, quanto tempo levará para processar todas essas mensagens?
 
 Eu vou tentar responder as seguintes perguntas:
 
@@ -16,18 +24,6 @@ Eu vou tentar responder as seguintes perguntas:
 - [ ] Criar um job que consome as mensagens com o payload do cenário
 - [ ] Consumir os 1 milhão de mensagens do Kafka e popular o banco de dados Postgres
 - [ ] Criar um benchmark para medir o tempo de processamento
-
-# Cenário
-
-Uma empresa possui diversos totens de autoatendimento, e cada totem envia mensagens para um tópico Kafka. Essas mensagens são processadas por um job que popula um banco de dados Postgres.
-
-A cada 15 minutos, cada totem envia cerca de 25 mensagens. Em um shopping, há cerca de 10 totens, então a cada 15 minutos temos aproximadamente 250 mensagens para processar.
-
-A empresa possui 100 shoppings, então a cada 15 minutos temos cerca de 25.000 mensagens para processar, totalizando aproximadamente 100.000 mensagens por hora.
-
-Por algum motivo, o serviço caiu por 10 horas, e as mensagens não foram processadas. Agora, o serviço foi reiniciado e está tentando processar todas as mensagens acumuladas.
-
-Temos 1 milhão de mensagens para processar, quanto tempo levará para processar todas essas mensagens?
 
 # Preparação do ambiente
 
