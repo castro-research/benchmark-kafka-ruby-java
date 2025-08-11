@@ -104,3 +104,20 @@ services:
         bundle exec karafka server
       "
     restart: unless-stopped
+
+  console:
+    build:
+      context: ./rails-mri
+      dockerfile: Dockerfile.dev
+    container_name: karafka
+    working_dir: /app
+    volumes:
+      - ./rails-mri:/app
+    environment:
+      RAILS_ENV: development
+      DATABASE_URL: postgres://bench:bench@postgres:5432/bench
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy

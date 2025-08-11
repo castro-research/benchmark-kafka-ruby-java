@@ -52,3 +52,12 @@ Imagina que temos 1 milhão de mensagens para processar, e cada mensagem é um J
 ```bash
 docker-compose up --build
 ```
+
+
+### Dicas
+
+se quiser entrar no container do Rails, use:
+
+```bash
+docker compose run -it console bash
+```
