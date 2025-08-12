@@ -57,6 +57,14 @@ Imagina que temos 1 milhão de mensagens para processar, e cada mensagem é um J
 docker-compose up --build
 ```
 
+# Limitações
+
+## Throttle
+
+Como essa funcionalidade é paga, não podemos usar o throttle do Karafka. Vamos ter que ficar manipulando o max.message.bytes, mas o throttle vai ser 100 em 100 mensagens.
+
+https://karafka.io/docs/Pausing-Seeking-and-Rate-Limiting/
+
 
 ### Dicas
 
