@@ -96,6 +96,7 @@ services:
     command: >
       bash -lc "
         (bundle check || bundle install) &&
+        DISABLE_DATABASE_ENVIRONMENT_CHECK=1 bundle exec rails db:drop db:create &&
         bin/rails db:prepare &&
         bundle exec karafka server
       "
@@ -114,7 +115,6 @@ services:
     volumes:
       - ./rails-mri:/app
     environment:
-      RAILS_ENV: development
       DATABASE_URL: postgres://bench:bench@postgres:5432/bench
     depends_on:
       postgres:
