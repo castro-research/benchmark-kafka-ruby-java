@@ -77,18 +77,6 @@ services:
       RAILS_ENV: production
       DATABASE_URL: postgres://bench:bench@postgres:5432/bench
       KAFKA_BROKERS: kafka:29092
-      KARAFKA_GROUP_ID: g1
-      TOPIC: jobs
-      BATCH_SIZE: "200"
-      PARTITIONS: "12"
-      REPLICATION_FACTOR: "1" # Sem replicação para simplificar o ambiente
-      CLEANUP_POLICY: compact # compact or delete
-      RETENTION_MS: "604800000" # 7 days
-      SEGMENT_BYTES: "1073741824" # 1 GB
-      MAX_MESSAGE_BYTES: "20971520" # 20 MB
-      MAX_PARTITION_FETCH_BYTES: "20971520" # 20 MB
-      COMPRESSION_TYPE: gzip,
-      MAX_POLL_RECORDS: "1000"
     depends_on:
       postgres:
         condition: service_healthy

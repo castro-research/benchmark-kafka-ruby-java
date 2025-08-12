@@ -1,9 +1,28 @@
 # frozen_string_literal: true
 
 class KarafkaApp < Karafka::App
+  TOPIC = 'jobs'
+  BATCH_SIZE = 200
+  PARTITIONS = 12
+  REPLICATION_FACTOR = 1 # Sem replicação para simplificar o ambiente
+  CLEANUP_POLICY = 'compact' # compact or delete
+  RETENTION_MS = 604800000 # 7 days
+  SEGMENT_BYTES = 1073741824 # 1 GB
+  MAX_MESSAGE_BYTES = 20971520 # 20 MB
+  MAX_PARTITION_FETCH_BYTES = 20971520 # 20 MB
+  FETCH_MAX_BYTES = 52428800 # 50 MB
+  COMPRESSION_TYPE = 'gzip'
+  MAX_POLL_RECORDS = 1000
+
   setup do |config|
-    config.kafka = { 'bootstrap.servers': ENV.fetch('KAFKA_BROKERS', 'kafka:9092') }
+    config.kafka = { 
+      'bootstrap.servers': ENV.fetch('KAFKA_BROKERS', 'kafka:9092'),
+      'max.partition.fetch.bytes': MAX_PARTITION_FETCH_BYTES,
+      'fetch.max.bytes': FETCH_MAX_BYTES,
+    }
+
     config.client_id = 'benchmark'
+    config.max_messages = BATCH_SIZE
 
     # IMPORTANT: Customize this group_id with your application name.
     # The group_id should be unique per application to properly track message consumption.
@@ -71,17 +90,16 @@ class KarafkaApp < Karafka::App
   routes.draw do
    active_job_topic :default if ENV['USE_ACTIVE_JOB'] == '1'
 
-  consumer_group ENV.fetch('KARAFKA_GROUP_ID', 'g1').to_sym do
-    topic ENV.fetch('TOPIC', 'jobs') do
+  consumer_group :g1 do    
+    topic :jobs do
       config(
-        partitions:          Integer(ENV.fetch('PARTITIONS', '4')),
-        replication_factor:  Integer(ENV.fetch('REPLICATION_FACTOR', '1')),
-        'cleanup.policy':    ENV.fetch('CLEANUP_POLICY', 'delete'),
-        'retention.ms':      Integer(ENV.fetch('RETENTION_MS', '3600000')),
-        'segment.bytes':     Integer(ENV.fetch('SEGMENT_BYTES', '134217728')),
-        'max.message.bytes': Integer(ENV.fetch('MAX_MESSAGE_BYTES', '1048576')),
-        'max.partition.fetch.bytes': Integer(ENV.fetch('MAX_PARTITION_FETCH_BYTES', '1048576')),
-        'compression.type':  ENV.fetch('COMPRESSION_TYPE', 'producer'),
+        partitions:          PARTITIONS,
+        replication_factor:  REPLICATION_FACTOR,
+        'cleanup.policy':    CLEANUP_POLICY,
+        'retention.ms':      RETENTION_MS,
+        'segment.bytes':     SEGMENT_BYTES,
+        'max.message.bytes': MAX_MESSAGE_BYTES,
+        'compression.type':  COMPRESSION_TYPE,
       )
 
       consumer BenchmarkConsumer
