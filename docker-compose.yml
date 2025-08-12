@@ -1,7 +1,6 @@
 services:
   kafka:
     image: apache/kafka:latest
-    container_name: kafka
     hostname: kafka
     environment:
       KAFKA_BROKER_ID: 1
@@ -31,7 +30,6 @@ services:
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
-    container_name: kafka-ui
     environment:
       - KAFKA_CLUSTERS_0_NAME=local
       - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092
@@ -55,7 +53,6 @@ services:
 
   postgres:
     image: postgres:17
-    container_name: postgres
     hostname: postgres
     environment:
       POSTGRES_USER: bench
@@ -73,12 +70,11 @@ services:
     build:
       context: ./rails-mri
       dockerfile: Dockerfile
-    container_name: karafka
     working_dir: /app
     volumes:
       - ./rails-mri:/app
     environment:
-      RAILS_ENV: development
+      RAILS_ENV: production
       DATABASE_URL: postgres://bench:bench@postgres:5432/bench
       KAFKA_BROKERS: kafka:29092
       KARAFKA_GROUP_ID: g1
@@ -104,12 +100,16 @@ services:
         bundle exec karafka server
       "
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
 
   console:
     build:
       context: ./rails-mri
       dockerfile: Dockerfile.dev
-    container_name: karafka
     working_dir: /app
     volumes:
       - ./rails-mri:/app

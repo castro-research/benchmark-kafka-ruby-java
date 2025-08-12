@@ -1,4 +1,4 @@
-class CreateEvents < ActiveRecord::Migration[8.0]
+class CreateKioskEvents < ActiveRecord::Migration[8.0]
   def change
     create_table :kiosk_events do |t|
       t.integer  :mall_id,         null: false

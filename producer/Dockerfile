@@ -15,4 +15,5 @@ ENV BOOTSTRAP_SERVERS=kafka:9092
 ENV TOPIC=jobs
 ENV MSGS=10
 
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+# Add JVM arguments to suppress warnings and enable proper logging
+ENTRYPOINT ["java", "--enable-native-access=ALL-UNNAMED", "-Dorg.slf4j.simpleLogger.defaultLogLevel=INFO", "-jar", "/app/app.jar"]
