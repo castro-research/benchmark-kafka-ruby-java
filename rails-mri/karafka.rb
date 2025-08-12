@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 class KarafkaApp < Karafka::App
-  TOPIC = 'jobs'
   BATCH_SIZE = 200
   PARTITIONS = 12
   REPLICATION_FACTOR = 1 # Sem replicação para simplificar o ambiente
