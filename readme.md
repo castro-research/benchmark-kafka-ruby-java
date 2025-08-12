@@ -20,10 +20,14 @@ Eu vou tentar responder as seguintes perguntas:
 - [x] Comunicar Kafka, Postgres e Rails
 - [x] Criar um producer de teste para enviar mensagens ao Kafka
 - [x] Criar um consumer de teste com Ruby (usando MRI) para consumir mensagens do Kafka
-- [ ] Montar um payload para popular o banco de dados Postgres
-- [ ] Criar um job que consome as mensagens com o payload do cenário
-- [ ] Consumir os 1 milhão de mensagens do Kafka e popular o banco de dados Postgres
-- [ ] Criar um benchmark para medir o tempo de processamento
+- [x] Montar um payload para popular o banco de dados Postgres
+- [x] Criar um job que consome as mensagens com o payload do cenário
+- [x] Consumir os 1 milhão de mensagens do Kafka e popular o banco de dados Postgres
+- [x] Limitar hardware virtual do container para ser mais justo
+- [ ] Após enviaar 1 milhão de mensagens, continuar produzindo mensagens continuamente
+- [ ] Fazer cálculos mais pesados no job ou fazer I/O mais pesado
+- [ ] Paralelizar o processamento de mensagens
+- [ ] Planejar e criar um benchmark para medir o tempo de processamento
 
 # Preparação do ambiente
 
@@ -59,5 +63,5 @@ docker-compose up --build
 se quiser entrar no container do Rails, use:
 
 ```bash
-docker compose run -it console bash
+docker compose run --rm -it console bash
 ```
