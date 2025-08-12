@@ -20,8 +20,6 @@ services:
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
     ports:
       - "9092:9092"
-    volumes:
-      - ./kafka-logs:/tmp/kraft-combined-logs
     healthcheck:
       test: ["CMD", "/opt/kafka/bin/kafka-topics.sh", "--bootstrap-server", "kafka:9092", "--list"]
       interval: 5s
