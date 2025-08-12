@@ -85,8 +85,10 @@ services:
       CLEANUP_POLICY: compact # compact or delete
       RETENTION_MS: "604800000" # 7 days
       SEGMENT_BYTES: "1073741824" # 1 GB
-      MAX_MESSAGE_BYTES: "10485760" # 10 MB
-      COMPRESSION_TYPE: gzip
+      MAX_MESSAGE_BYTES: "20971520" # 20 MB
+      MAX_PARTITION_FETCH_BYTES: "20971520" # 20 MB
+      COMPRESSION_TYPE: gzip,
+      MAX_POLL_RECORDS: "1000"
     depends_on:
       postgres:
         condition: service_healthy

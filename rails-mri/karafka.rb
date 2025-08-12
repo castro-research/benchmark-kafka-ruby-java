@@ -80,7 +80,8 @@ class KarafkaApp < Karafka::App
         'retention.ms':      Integer(ENV.fetch('RETENTION_MS', '3600000')),
         'segment.bytes':     Integer(ENV.fetch('SEGMENT_BYTES', '134217728')),
         'max.message.bytes': Integer(ENV.fetch('MAX_MESSAGE_BYTES', '1048576')),
-        'compression.type':  ENV.fetch('COMPRESSION_TYPE', 'producer')
+        'max.partition.fetch.bytes': Integer(ENV.fetch('MAX_PARTITION_FETCH_BYTES', '1048576')),
+        'compression.type':  ENV.fetch('COMPRESSION_TYPE', 'producer'),
       )
 
       consumer BenchmarkConsumer
