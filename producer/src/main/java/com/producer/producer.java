@@ -17,7 +17,7 @@ public class producer {
         String bootstrapServers = System.getenv().getOrDefault("BOOTSTRAP_SERVERS", "kafka:9092");
         String topicName = System.getenv().getOrDefault("TOPIC", "jobs");
 
-        int numMessages = 1_000_000_000;
+        int numMessages = 1_000_000; // 1 milhão de mensagens
         LocalDateTime lastEventTime = LocalDateTime.now();
 
         // Configurações do producer
