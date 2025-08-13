@@ -24,7 +24,7 @@ Eu vou tentar responder as seguintes perguntas:
 - [x] Criar um job que consome as mensagens com o payload do cenário
 - [x] Consumir os 1 milhão de mensagens do Kafka e popular o banco de dados Postgres
 - [x] Limitar hardware virtual do container para ser mais justo
-- [ ] Após enviaar 1 milhão de mensagens, continuar produzindo mensagens continuamente
+- [ ] Após enviar 1 milhão de mensagens, continuar produzindo mensagens continuamente
 - [ ] Fazer cálculos mais pesados no job ou fazer I/O mais pesado
 - [ ] Paralelizar o processamento de mensagens
 - [ ] Planejar e criar um benchmark para medir o tempo de processamento
@@ -37,19 +37,20 @@ No Kafka, nosso tópico terá as seguintes configurações padrões:
 
 | Configuração         | Valor padrão (`ENV`) | Descrição                              | O que significa?           |
 |----------------------|----------------------|----------------------------------------|----------------------------|
-| partitions           | 4                    | Número de partições                    | 4 partições                |
+| partitions           | 12                   | Número de partições                    | 12 partições               |
 | replication_factor   | 1                    | Fator de replicação                    | 1 cópia                    |
-| cleanup.policy       | delete               | Política de limpeza                    | Excluir dados antigos      |
-| retention.ms         | 3600000              | Retenção em milissegundos              | 1 hora                     |
-| segment.bytes        | 134217728            | Tamanho do segmento (bytes)            | 128 MB                     |
-| max.message.bytes    | 1048576              | Tamanho máx. da mensagem (bytes)       | 1 MB                       |
-| compression.type     | producer             | Tipo de compressão                     | Definido pelo produtor     |
+| cleanup.policy       | compact              | Política de limpeza                    | Compactar dados            |
+| retention.ms         | 604800000            | Retenção em milissegundos              | 7 dias                     |
+| segment.bytes        | 1073741824           | Tamanho do segmento (bytes)            | 1 GB                       |
+| max.message.bytes    | 20971520             | Tamanho máx. da mensagem (bytes)       | 20 MB                      |
+| compression.type     | gzip                 | Tipo de compressão                     | GZIP                       |
+| max.poll.records     | 1000                 | Máximo de registros por poll           | 1000 registros             |
+| batch.size           | 200                  | Tamanho do lote                        | 200 mensagens              |
 
 
 Sabendo que nosso maior vilão será I/O, vamos adicionar conexão de dados persistente ao Postgres.
 
 Imagina que temos 1 milhão de mensagens para processar, e cada mensagem é um JSON que vai popular o banco.
-
 
 # Iniciar Benchmark
 
@@ -57,10 +58,34 @@ Imagina que temos 1 milhão de mensagens para processar, e cada mensagem é um J
 docker-compose up --build
 ```
 
-### Dicas
+# Dicas
 
 se quiser entrar no container do Rails, use:
 
 ```bash
 docker compose run --rm -it console bash
 ```
+
+# Resultados
+
+Vou separar os resultados por teste, e cada teste terá um número de relevância de 0 a 10, onde 0 é irrelevante e 10 é extremamente relevante.
+
+As ferramentas utilizadas para os testes serão:
+
+- Ruby 3.3.X (MRI)
+- Java 21 (OpenJDK)
+- Rails 8
+- postgres:17
+- Apache Kafka
+- Kafka UI
+- DBeaver
+
+![Test 001 Results](.github/1.png)
+
+Todos resultados serão apresentados em ([`report.md`](report.md))
+
+## Resultados relevantes
+
+
+## Conclusões
+
