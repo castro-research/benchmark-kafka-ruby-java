@@ -48,6 +48,8 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
+      mri:
+        condition: service_healthy
 
   postgres:
     image: postgres:17
@@ -84,11 +86,17 @@ services:
     command: >
       bash -lc "
         (bundle check || bundle install) &&
+        bundle exec karafka topics create &&
         DISABLE_DATABASE_ENVIRONMENT_CHECK=1 bundle exec rails db:drop db:create &&
         bin/rails db:prepare &&
         bundle exec karafka server
       "
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bundle", "exec", "rails", "db:version"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
     deploy:
       resources:
         limits:

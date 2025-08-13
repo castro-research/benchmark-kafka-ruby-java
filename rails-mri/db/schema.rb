@@ -25,6 +25,5 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_12_145350) do
     t.integer "status", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["mall_id", "kiosk_id", "event_type", "event_ts"], name: "index_kiosk_events_on_mall_kiosk_eventts", unique: true
   end
 end

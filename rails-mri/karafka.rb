@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class KarafkaApp < Karafka::App
-  BATCH_SIZE = 200
+  BATCH_SIZE = 2000
   PARTITIONS = 12
   REPLICATION_FACTOR = 1 # Sem replicação para simplificar o ambiente
   CLEANUP_POLICY = 'compact' # compact or delete
@@ -11,13 +11,12 @@ class KarafkaApp < Karafka::App
   MAX_PARTITION_FETCH_BYTES = 20971520 # 20 MB
   FETCH_MAX_BYTES = 52428800 # 50 MB
   COMPRESSION_TYPE = 'gzip'
-  MAX_POLL_RECORDS = 1000
 
   setup do |config|
     config.kafka = { 
       'bootstrap.servers': ENV.fetch('KAFKA_BROKERS', 'kafka:9092'),
-      'max.partition.fetch.bytes': MAX_PARTITION_FETCH_BYTES,
-      'fetch.max.bytes': FETCH_MAX_BYTES,
+      # 'max.partition.fetch.bytes': MAX_PARTITION_FETCH_BYTES,
+      # 'fetch.max.bytes': FETCH_MAX_BYTES,
     }
 
     config.client_id = 'benchmark'
@@ -92,12 +91,12 @@ class KarafkaApp < Karafka::App
   consumer_group :g1 do    
     topic :jobs do
       config(
-        partitions:          PARTITIONS,
-        replication_factor:  REPLICATION_FACTOR,
-        'cleanup.policy':    CLEANUP_POLICY,
-        'retention.ms':      RETENTION_MS,
-        'segment.bytes':     SEGMENT_BYTES,
-        'max.message.bytes': MAX_MESSAGE_BYTES,
+        partitions: 1,
+        # replication_factor:  REPLICATION_FACTOR,
+        # 'cleanup.policy':    CLEANUP_POLICY,
+        # 'retention.ms':      RETENTION_MS,
+        # 'segment.bytes':     SEGMENT_BYTES,
+        # 'max.message.bytes': MAX_MESSAGE_BYTES,
         'compression.type':  COMPRESSION_TYPE,
       )
 

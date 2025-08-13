@@ -11,9 +11,6 @@ class CreateKioskEvents < ActiveRecord::Migration[8.0]
       t.integer  :status,          null: false
 
       t.timestamps
-
-      # unique constraint
-      t.index [:mall_id, :kiosk_id, :event_type, :event_ts], unique: true, name: 'index_kiosk_events_on_mall_kiosk_eventts'
     end
   end
 end
