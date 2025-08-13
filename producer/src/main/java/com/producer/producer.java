@@ -1,134 +1,151 @@
 package com.producer;
 
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.common.serialization.StringSerializer;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.kafka.clients.producer.*;
+import org.apache.kafka.common.serialization.StringSerializer;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Properties;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 public class producer {
-    private static KafkaProducer<String, String> kafkaProducer;
-    
+    private static final int INITIAL_MESSAGES = 25_000_000;
+    private static final int BATCH_SIZE = 100_000;
+    private static final int THREADS = 32;
+    private static final int INITIAL_AWAIT_SECONDS = 120;
+    private static final int BATCH_AWAIT_SECONDS = 60;
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
     public static void main(String[] args) {
 
-        int numMessages = 1_000_000; // 1 milhão de mensagens
-        String topicName = System.getenv().getOrDefault("TOPIC", "jobs");
-        String bootstrapServers = System.getenv().getOrDefault("BOOTSTRAP_SERVERS", "kafka:9092");
+        final String topic = System.getenv().getOrDefault("TOPIC", "jobs");
+        final String bootstrapServers = System.getenv().getOrDefault("BOOTSTRAP_SERVERS", "kafka:9092");
 
+        System.out.printf("[%s] Starting to produce %,d messages to topic: %s%n",
+                LocalDateTime.now(), INITIAL_MESSAGES, topic);
+
+        // Comentar essa parte para o Teste#006
+        // Inicio
+        try (KafkaProducer<String, String> producer = createProducer(bootstrapServers)) {
+            produceFixedMessages(producer, topic, INITIAL_MESSAGES, THREADS, INITIAL_AWAIT_SECONDS);
+            producer.flush();
+        }
+        // Fim
+
+        System.out.printf("[%s] Finished producing %,d messages with flush%n",
+                LocalDateTime.now(), INITIAL_MESSAGES);
+
+        System.out.printf("[%s] Starting phase 2: %,d events every minute with flush%n",
+                LocalDateTime.now(), BATCH_SIZE);
+
+        try (KafkaProducer<String, String> producer = createProducer(bootstrapServers)) {
+            produceRecurringBatches(producer, topic, BATCH_SIZE, THREADS, Duration.ofMinutes(1));
+        }
+    }
+
+    private static KafkaProducer<String, String> createProducer(String bootstrapServers) {
         Properties props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        kafkaProducer = new KafkaProducer<>(props);
-        
-        ExecutorService executor = Executors.newFixedThreadPool(32);
-        System.out.println("[" + LocalDateTime.now() + "] Starting to produce " + numMessages + " messages to topic: " + topicName);        
+        props.put(ProducerConfig.ACKS_CONFIG, "1");
+        props.put(ProducerConfig.LINGER_MS_CONFIG, "5");
+        props.put(ProducerConfig.BATCH_SIZE_CONFIG, String.valueOf(64 * 1024));
+        props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "lz4");
+        return new KafkaProducer<>(props);
+    }
 
-        for (int i = 1; i <= numMessages; i++) {
-            final LocalDateTime eventTime = LocalDateTime.now().minusDays(ThreadLocalRandom.current().nextLong(365));
-
-            executor.submit(() -> {
-                dispatchEvent(eventTime, "visit", topicName);
-            });
+    private static void produceFixedMessages(KafkaProducer<String, String> producer,
+                                             String topic,
+                                             int totalMessages,
+                                             int threads,
+                                             int awaitSeconds) {
+        ExecutorService exec = Executors.newFixedThreadPool(threads);
+        for (int i = 0; i < totalMessages; i++) {
+            exec.submit(() -> sendRandomEvent(producer, topic, "visit"));
         }
-        
-        executor.shutdown();
+        shutdownAndAwait(exec, awaitSeconds);
+    }
 
-        try {
-            executor.awaitTermination(120, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            executor.shutdownNow();
-            Thread.currentThread().interrupt();
-        }
-
-        kafkaProducer.flush();
-        
-        System.out.println("[" + LocalDateTime.now() + "] Finished producing " + numMessages + " messages with flush");
-
-        System.out.println("[" + LocalDateTime.now() + "] Starting phase 2: 25k events every 15 minutes (individual messages, no flush)");
-        
-        Properties individualProps = new Properties();
-        individualProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        individualProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        individualProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        
-        LocalDateTime startTime = LocalDateTime.now();
-        int eventCount = 0;
-        
+    private static void produceRecurringBatches(KafkaProducer<String, String> producer,
+                                                String topic,
+                                                int batchSize,
+                                                int threads,
+                                                Duration period) {
+        int cycle = 0;
         while (true) {
-            // Verifica se completou 15 minutos E se ainda há eventos para enviar no ciclo atual
-            if (LocalDateTime.now().isAfter(startTime.plusMinutes(15))) {
-                eventCount = 0;
-                startTime = LocalDateTime.now();
-                
-                continue;
+            final int currentCycle = cycle;
+            LocalDateTime batchStart = LocalDateTime.now();
+            System.out.printf("[%s] Starting batch of %,d events%n", batchStart, batchSize);
+
+            ExecutorService exec = Executors.newFixedThreadPool(threads);
+            for (int i = 0; i < batchSize; i++) {
+                exec.submit(() -> sendRandomEvent(producer, topic, "purchase-" + currentCycle));
             }
+            shutdownAndAwait(exec, BATCH_AWAIT_SECONDS);
 
-            dispatchEventIndividual(LocalDateTime.now(), "purchase", topicName, bootstrapServers);
-            eventCount++;
+            producer.flush();
+            cycle++;
 
-            try {
-                Thread.sleep(36);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
+            LocalDateTime batchEnd = LocalDateTime.now();
+            System.out.printf("[%s] Completed batch of %,d events with flush%n", batchEnd, batchSize);
+
+            long elapsed = Duration.between(batchStart, LocalDateTime.now()).getSeconds();
+            long sleepSeconds = Math.max(0, period.getSeconds() - elapsed);
+            if (sleepSeconds > 0) {
+                System.out.printf("[%s] Waiting %d seconds until next batch%n", LocalDateTime.now(), sleepSeconds);
+                sleepQuietly(Duration.ofSeconds(sleepSeconds));
             }
         }
-        
-        kafkaProducer.close();
-        System.out.println("[" + LocalDateTime.now() + "] Producer finished completely");
+    }
+
+    private static void sendRandomEvent(KafkaProducer<String, String> producer, String topic, String eventType) {
+        LocalDateTime eventTime = LocalDateTime.now().minusDays(ThreadLocalRandom.current().nextLong(365));
+        KioskEvent event = createKioskEvent(eventTime, eventType);
+        sendEvent(producer, topic, String.valueOf(event.getKioskId()), event);
+    }
+
+    private static void sendEvent(KafkaProducer<String, String> producer,
+                                  String topic,
+                                  String key,
+                                  KioskEvent event) {
+        try {
+            String value = MAPPER.writeValueAsString(event);
+            ProducerRecord<String, String> record = new ProducerRecord<>(topic, key, value);
+            producer.send(record, (metadata, ex) -> {
+                if (ex != null) {
+                    ex.printStackTrace();
+                }
+            });
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
     }
 
     private static KioskEvent createKioskEvent(LocalDateTime eventTime, String eventType) {
-        return new KioskEvent(
-            1,
-            1,
-            0,
-            eventType,
-            eventTime.toString(),
-            1000,
-            5,
-            1
-        );
+        return new KioskEvent(1, 1, 0, eventType, eventTime.toString(), 1000, 5, 1);
     }
 
-    private static void dispatchEvent(LocalDateTime lastEventTime, String eventType, String topicName) {
-        KioskEvent event = createKioskEvent(lastEventTime, eventType);
-        ObjectMapper objectMapper = new ObjectMapper();
-
+    private static void shutdownAndAwait(ExecutorService exec, int seconds) {
+        exec.shutdown();
         try {
-            String value = objectMapper.writeValueAsString(event);
-            ProducerRecord<String, String> record = new ProducerRecord<>(topicName, String.valueOf(event.getKioskId()), value);
-            kafkaProducer.send(record).get();
-        } catch (JsonProcessingException | InterruptedException | ExecutionException e) {
-            e.printStackTrace();
+            if (!exec.awaitTermination(seconds, TimeUnit.SECONDS)) {
+                exec.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            exec.shutdownNow();
+            Thread.currentThread().interrupt();
         }
     }
 
-    private static void dispatchEventIndividual(LocalDateTime lastEventTime, String eventType, String topicName, String bootstrapServers) {
-        KioskEvent event = createKioskEvent(lastEventTime, eventType);
-        ObjectMapper objectMapper = new ObjectMapper();
-        Properties props = new Properties();
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-
-        try (KafkaProducer<String, String> producer = new KafkaProducer<>(props)) {
-            String value = objectMapper.writeValueAsString(event);
-            ProducerRecord<String, String> record = new ProducerRecord<>(topicName, String.valueOf(event.getKioskId()), value);
-            producer.send(record).get();
-        } catch (JsonProcessingException | InterruptedException | ExecutionException e) {
-            e.printStackTrace();
+    private static void sleepQuietly(Duration d) {
+        try {
+            Thread.sleep(d.toMillis());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 }

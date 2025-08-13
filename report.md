@@ -110,6 +110,77 @@ Média de tempo por mensagem:  0,36 ms (360 segundos / 1.000.000 eventos)
 
 O resultado do Teste#003, e o Teste#004, sem precisar de otimizar o consumer, me faz pensar que está muito fácil.
 
-Agora é a hora de deixar o consumer mais lento, antes de otimizar ele.
+Vamos começar a apertar: Nosso Workload agora é 25 milhões de eventos presos, enquanto recebemos 100 mil eventos por minuto.
 
-[Work in progress....]
+Não vamos alterar nada no nosso consumer, nem no Ruby/Rails
+
+Para processar tudo, vamos precisar (talvez) de 250 minutos, ou seja, 4 horas e 10 minutos.
+
+Porém, nosso problema é que após a cada 10 minutos, temos 1 milhão de eventos novos.
+
+```
+Relevância: 9
+Observações:
+Não vamos consegui processar tudo.
+
+Resultados:
+Inicio: 2025-08-13 20:59:21.466
+Fim: 2025-08-13 21:57:08.273
+Total processado: 9346175
+Tempo total: 55 minutos
+Média de mensagens por segundo: 2.722,22 (8.957.612 eventos / 3.290 segundos)
+Média de tempo por mensagem: 0,37 ms (3.290 segundos / 8.957.612 eventos)
+Lag: 21.376.000 Eventos
+```
+
+### Teste#006
+
+O Teste#005 mostrou que o sistema é capaz de lidar com uma carga de 100 mil eventos por minuto, mas o lag acumulado é significativo.
+
+Antes de otimizar o consumer, a seguinte pergunta surge: Se não fosse pelos 25 milhões de eventos iniciais, o sistema teria conseguido processar tudo?
+
+é o que vamos testar agora.
+
+Para testar isso, eu preciso adicionar uma label para cada 100 mil eventos, para calcular o tempo de processamento de cada lote.
+
+Resultados:
+
+```bash
+SELECT
+    event_type,
+    MIN(updated_at) AS min_updated_at,
+    MAX(updated_at) AS max_updated_at,
+    COUNT(*)        AS processados,
+    MAX(updated_at) - MIN(updated_at) AS tempo_total
+FROM
+    kiosk_events
+GROUP BY
+    event_type
+ORDER BY
+    event_type;
+
+event_type |min_updated_at         |max_updated_at         |processados|tempo_total    |
+-----------+-----------------------+-----------------------+-----------+---------------+
+purchase-0 |2025-08-13 22:09:50.646|2025-08-13 22:10:34.113|     100000|00:00:43.466403|
+purchase-1 |2025-08-13 22:10:51.020|2025-08-13 22:11:34.565|     100000|00:00:43.544496|
+purchase-2 |2025-08-13 22:11:51.254|2025-08-13 22:12:31.289|     100000|00:00:40.034331|
+purchase-3 |2025-08-13 22:12:51.415|2025-08-13 22:13:33.654|     100000|00:00:42.238269|
+purchase-4 |2025-08-13 22:13:51.590|2025-08-13 22:14:31.940|     100000|00:00:40.350253|
+purchase-5 |2025-08-13 22:14:51.780|2025-08-13 22:15:31.605|     100000| 00:00:39.82562|
+purchase-6 |2025-08-13 22:15:51.957|2025-08-13 22:16:32.663|     100000|00:00:40.706467|
+purchase-7 |2025-08-13 22:16:52.130|2025-08-13 22:17:32.717|     100000|00:00:40.587259|
+purchase-8 |2025-08-13 22:17:52.304|2025-08-13 22:18:32.061|     100000|00:00:39.756939|
+purchase-9 |2025-08-13 22:18:52.515|2025-08-13 22:19:33.330|     100000| 00:00:40.81528|
+```
+
+Então, sem alterar o consumer, o ruby, ou adicionar paralelização, o sistema é capaz de processar 100 mil eventos em cerca de 40 a 43 segundos.
+
+O problema então, será o que fazer com os 25 milhões de eventos iniciais, que acumulam um lag significativo.
+
+### Teste#007
+
+O Teste#006 mostrou que o sistema é capaz de processar 100 mil eventos em cerca de 40 a 43 segundos, mas o lag acumulado dos 25 milhões de eventos iniciais ainda é um desafio.
+
+Como escalar e otimizar o processamento para lidar com esse lag?
+
+[Working in Progress]
