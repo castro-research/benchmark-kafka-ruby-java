@@ -104,6 +104,8 @@ Média de mensagens por segundo: 2.777,78 (1.000.000 eventos / 360 segundos)
 Média de tempo por mensagem:  0,36 ms (360 segundos / 1.000.000 eventos)
 ```
 
+![Test Results](.github/2.png)
+
 ### Teste#005
 
 O resultado do Teste#003, e o Teste#004, sem precisar de otimizar o consumer, me faz pensar que está muito fácil.
