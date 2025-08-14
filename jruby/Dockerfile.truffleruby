@@ -1,0 +1,27 @@
+FROM lekito/truffleruby-jvm:latest
+
+# https://github.com/jruby/jruby/issues/7517
+RUN rbenv install jruby-9.4.13.0
+RUN rbenv global jruby-9.4.13.0
+
+WORKDIR /app
+
+# COPY Gemfile Gemfile.lock ./
+
+# RUN bundle install
+
+RUN mkdir -p libs && \
+    curl -L -o libs/kafka-clients-3.8.0.jar \
+      https://repo1.maven.org/maven2/org/apache/kafka/kafka-clients/3.8.0/kafka-clients-3.8.0.jar && \
+    curl -L -o libs/slf4j-api-1.7.36.jar \
+      https://repo1.maven.org/maven2/org/slf4j/slf4j-api/1.7.36/slf4j-api-1.7.36.jar && \
+    curl -L -o libs/slf4j-simple-1.7.36.jar \
+      https://repo1.maven.org/maven2/org/slf4j/slf4j-simple/1.7.36.jar
+
+COPY . .
+
+EXPOSE 3000
+
+ENV CLASSPATH="libs/*"
+
+CMD ["ruby", "--polyglot", "-cp", "libs/*", "consumer.rb"]

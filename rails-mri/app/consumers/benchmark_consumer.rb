@@ -22,11 +22,12 @@ class BenchmarkConsumer < ApplicationConsumer
     end
     
     event_ts = Time.parse(payload['eventTs']) rescue nil
+    event_type = "#{RUBY_ENGINE}-#{payload['eventType']}"
 
     KioskEvent.create!(
       mall_id: payload['mallId'],
       kiosk_id: payload['kioskId'],
-      event_type: payload['eventType'],
+      event_type: event_type,
       event_ts: event_ts,
       amount_cents: payload['amountCents'],
       total_items: payload['totalItems'],

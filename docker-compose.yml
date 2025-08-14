@@ -117,3 +117,26 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+  
+  # console_truffleruby:
+  #   build:
+  #     context: ./jruby
+  #     dockerfile: Dockerfile.truffleruby
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     mri:
+  #       condition: service_healthy
+  #   environment:
+  #     RAILS_ENV: production
+  #     DATABASE_URL: postgres://bench:bench@postgres/bench
+  #     KARAFKA_DISABLE_WARMUP: "true"
+  #     KAFKA_BROKERS: kafka:29092
+  #   volumes:
+  #     - ./jruby/:/app
+  #   working_dir: /app
+  #   command: >
+  #     bash -c "
+  #       bundle install &&
+  #       jruby consumer.rb
+  #     "

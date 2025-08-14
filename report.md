@@ -183,4 +183,75 @@ O Teste#006 mostrou que o sistema é capaz de processar 100 mil eventos em cerca
 
 Como escalar e otimizar o processamento para lidar com esse lag?
 
+O truffleRuby é uma péssima opção, por que ele não vai conseguir lidar com o import do .jar do Kafka, nem se isolar o o consumer como eu fiz com o JRuby. 
+What a Shame! Não tem nem como testar, pelos menos por enquanto.
+
+Vamos então ao JRuby vs Ruby MRI. ( eu usei uma imagem custom, então se vc for rodar, vai quebrar, precisa ir lá no repo e buildar local https://github.com/alexcastrodev/truffleruby)
+
+Por problema de compatibilidade com ActiveRecord, Rails (Rails 7.x tem que usar o JRuby 9, e Rails 8.x tem que usar o JRuby 10), e falta de suporte com kafrafka, o container do JRuby foi isolado.
+
+O que é uma péssima experiência, por que não conseguimos reaproveitar o código do Rails.
+
+O TruffleRuby conseguiu dar start no projeto inteiro, só deu incompatibilidade com o karafka, e precisei fazer monkey pathing no GC.
+
+O JRuby debaixo da JVM ainda apanhou muito com a performance atual do MRI.
+
+```
+event_type      |min_updated_at         |max_updated_at         |processados|tempo_total    |
+----------------+-----------------------+-----------------------+-----------+---------------+
+jruby-purchase-1|2025-08-14 21:27:29.025|2025-08-14 21:28:41.244|     100000|00:01:12.218403|
+jruby-purchase-3|2025-08-14 21:28:41.653|2025-08-14 21:29:29.930|     100000|00:00:48.277596|
+ruby-purchase-0 |2025-08-14 21:27:14.845|2025-08-14 21:28:08.623|     100000|00:00:53.778087|
+ruby-purchase-2 |2025-08-14 21:28:08.624|2025-08-14 21:28:59.769|     100000|00:00:51.145386|
+```
+
+O que me deu vontade de diminuir o POLL_MS do consumer, para 50ms, e aumentar o BATCH_SIZE para 5000.
+
+Independentemente, o resultado parece o mesmo que antes.
+
+```
+event_type      |min_updated_at         |max_updated_at         |processados|tempo_total    |
+----------------+-----------------------+-----------------------+-----------+---------------+
+jruby-purchase-1|2025-08-14 21:37:35.448|2025-08-14 21:38:50.453|     100000|00:01:15.004774|
+jruby-purchase-3|2025-08-14 21:38:50.453|2025-08-14 21:39:58.842|     100000|00:01:08.389332|
+jruby-purchase-4|2025-08-14 21:39:58.842|2025-08-14 21:40:47.313|     100000|00:00:48.470891|
+ruby-purchase-0 |2025-08-14 21:37:23.067|2025-08-14 21:38:12.837|     100000|00:00:49.770411|
+ruby-purchase-2 |2025-08-14 21:38:12.838|2025-08-14 21:39:00.234|     100000|00:00:47.396155|
+ruby-purchase-5 |2025-08-14 21:39:00.234|2025-08-14 21:39:48.822|     100000|00:00:48.587377|
+```
+
+Será que temos algum ganho com pequenos lotes de mensagens?
+
+```
+event_type      |min_updated_at         |max_updated_at         |processados|tempo_total    |
+----------------+-----------------------+-----------------------+-----------+---------------+
+jruby-purchase-1|2025-08-14 21:43:08.540|2025-08-14 21:44:30.431|     100000|00:01:21.890515|
+jruby-purchase-3|2025-08-14 21:44:30.431|2025-08-14 21:45:39.355|     100000|00:01:08.923651|
+jruby-purchase-4|2025-08-14 21:45:39.355|2025-08-14 21:46:31.286|     100000|00:00:51.931553|
+ruby-purchase-0 |2025-08-14 21:42:58.138|2025-08-14 21:43:47.937|     100000|00:00:49.799054|
+ruby-purchase-2 |2025-08-14 21:43:47.938|2025-08-14 21:44:36.894|     100000|00:00:48.956371|
+ruby-purchase-5 |2025-08-14 21:44:36.894|2025-08-14 21:45:26.153|     100000| 00:00:49.25889|
+```
+
+Infelizmente, não conseguimos ter ganho algum, e mesmo que conseguíssemos, o ganho seria mínimo e não justificaria a complexidade adicional.
+
+Escrever em Java faria mais sentido, mas o objetivo neste teste em específico é comparar Ruby e JRuby.
+
+A performance aqui só vai começar a valer quando fizermos insert em massa, e não por mensagem.
+
+```
+event_type      |min_updated_at         |max_updated_at         |processados|tempo_total    |
+----------------+-----------------------+-----------------------+-----------+---------------+
+jruby-purchase-1|2025-08-14 21:55:47.571|2025-08-14 21:55:53.691|     100000|00:00:06.120578|
+jruby-purchase-3|2025-08-14 21:56:07.780|2025-08-14 21:56:12.756|     100000| 00:00:04.97597|
+ruby-purchase-0 |2025-08-14 21:55:37.125|2025-08-14 21:55:42.488|     100000|00:00:05.362195|
+ruby-purchase-2 |2025-08-14 21:55:57.695|2025-08-14 21:56:02.632|     100000|00:00:04.936878|
+```
+
+Mas novamente, escrever um Ruby sem aproveitar do Rails, não faz sentido.
+
+Então, ao dia de hoje, eu descarto o TruffleRuby e o JRuby para este tipo de teste, e vou focar no MRI.
+
+### Teste#008
+
 [Working in Progress]

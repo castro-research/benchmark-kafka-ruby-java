@@ -1,0 +1,7 @@
+source "https://rubygems.org"
+
+# ================
+# Benchmark
+# ================
+## PostgreSQL client
+gem 'activerecord-jdbcpostgresql-adapter'

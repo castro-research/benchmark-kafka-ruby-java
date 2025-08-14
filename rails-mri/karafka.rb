@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class KarafkaApp < Karafka::App
-  BATCH_SIZE = 2000
+  BATCH_SIZE = 300
   PARTITIONS = 12
   REPLICATION_FACTOR = 1 # Sem replicação para simplificar o ambiente
   CLEANUP_POLICY = 'compact' # compact or delete
@@ -91,13 +91,13 @@ class KarafkaApp < Karafka::App
   consumer_group :g1 do    
     topic :jobs do
       config(
-        partitions: 1,
+        partitions: 2,
         # replication_factor:  REPLICATION_FACTOR,
         # 'cleanup.policy':    CLEANUP_POLICY,
         # 'retention.ms':      RETENTION_MS,
         # 'segment.bytes':     SEGMENT_BYTES,
         # 'max.message.bytes': MAX_MESSAGE_BYTES,
-        'compression.type':  COMPRESSION_TYPE,
+        # 'compression.type':  COMPRESSION_TYPE,
       )
 
       consumer BenchmarkConsumer

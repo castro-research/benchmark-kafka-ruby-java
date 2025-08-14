@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Properties;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class producer {
     private static final int INITIAL_MESSAGES = 25_000_000;
@@ -16,6 +17,8 @@ public class producer {
     private static final int THREADS = 32;
     private static final int INITIAL_AWAIT_SECONDS = 120;
     private static final int BATCH_AWAIT_SECONDS = 60;
+
+    private static final AtomicLong GLOBAL_SEQ = new AtomicLong(0);
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -29,10 +32,10 @@ public class producer {
 
         // Comentar essa parte para o Teste#006
         // Inicio
-        try (KafkaProducer<String, String> producer = createProducer(bootstrapServers)) {
-            produceFixedMessages(producer, topic, INITIAL_MESSAGES, THREADS, INITIAL_AWAIT_SECONDS);
-            producer.flush();
-        }
+        // try (KafkaProducer<String, String> producer = createProducer(bootstrapServers)) {
+        //     produceFixedMessages(producer, topic, INITIAL_MESSAGES, THREADS, INITIAL_AWAIT_SECONDS);
+        //     producer.flush();
+        // }
         // Fim
 
         System.out.printf("[%s] Finished producing %,d messages with flush%n",
@@ -42,7 +45,7 @@ public class producer {
                 LocalDateTime.now(), BATCH_SIZE);
 
         try (KafkaProducer<String, String> producer = createProducer(bootstrapServers)) {
-            produceRecurringBatches(producer, topic, BATCH_SIZE, THREADS, Duration.ofMinutes(1));
+            produceRecurringBatches(producer, topic, BATCH_SIZE, THREADS, Duration.ofSeconds(10));
         }
     }
 
@@ -65,7 +68,7 @@ public class producer {
                                              int awaitSeconds) {
         ExecutorService exec = Executors.newFixedThreadPool(threads);
         for (int i = 0; i < totalMessages; i++) {
-            exec.submit(() -> sendRandomEvent(producer, topic, "visit"));
+            exec.submit(() -> sendNextEvent(producer, topic, "visit"));
         }
         shutdownAndAwait(exec, awaitSeconds);
     }
@@ -77,13 +80,18 @@ public class producer {
                                                 Duration period) {
         int cycle = 0;
         while (true) {
-            final int currentCycle = cycle;
+            // Esta seção é para o Teste#007 
+            if(cycle == 6) {
+                System.out.printf("[%s] Stopping after 4 cycles%n", LocalDateTime.now());
+                break;
+            }
+            // Fim
             LocalDateTime batchStart = LocalDateTime.now();
             System.out.printf("[%s] Starting batch of %,d events%n", batchStart, batchSize);
 
             ExecutorService exec = Executors.newFixedThreadPool(threads);
             for (int i = 0; i < batchSize; i++) {
-                exec.submit(() -> sendRandomEvent(producer, topic, "purchase-" + currentCycle));
+                exec.submit(() -> sendNextEvent(producer, topic, "purchase"));
             }
             shutdownAndAwait(exec, BATCH_AWAIT_SECONDS);
 
@@ -102,10 +110,17 @@ public class producer {
         }
     }
 
-    private static void sendRandomEvent(KafkaProducer<String, String> producer, String topic, String eventType) {
+    private static void sendNextEvent(KafkaProducer<String, String> producer, String topic, String baseEventType) {
+        long seq = GLOBAL_SEQ.getAndIncrement();
+        int kioskId = (int) (seq / 100_000L); // incrementa a cada 100_000 eventos
         LocalDateTime eventTime = LocalDateTime.now().minusDays(ThreadLocalRandom.current().nextLong(365));
-        KioskEvent event = createKioskEvent(eventTime, eventType);
-        sendEvent(producer, topic, String.valueOf(event.getKioskId()), event);
+
+        String finalEventType = baseEventType.equals("purchase")
+                ? "purchase-" + kioskId
+                : baseEventType;
+
+        KioskEvent event = createKioskEvent(kioskId, eventTime, finalEventType);
+        sendEvent(producer, topic, String.valueOf(kioskId), event);
     }
 
     private static void sendEvent(KafkaProducer<String, String> producer,
@@ -125,8 +140,8 @@ public class producer {
         }
     }
 
-    private static KioskEvent createKioskEvent(LocalDateTime eventTime, String eventType) {
-        return new KioskEvent(1, 1, 0, eventType, eventTime.toString(), 1000, 5, 1);
+    private static KioskEvent createKioskEvent(int kioskId, LocalDateTime eventTime, String eventType) {
+        return new KioskEvent(1, kioskId, 0, eventType, eventTime.toString(), 1000, 5, 1);
     }
 
     private static void shutdownAndAwait(ExecutorService exec, int seconds) {
