@@ -32,10 +32,10 @@ public class producer {
 
         // Comentar essa parte para o Teste#006
         // Inicio
-        // try (KafkaProducer<String, String> producer = createProducer(bootstrapServers)) {
-        //     produceFixedMessages(producer, topic, INITIAL_MESSAGES, THREADS, INITIAL_AWAIT_SECONDS);
-        //     producer.flush();
-        // }
+        try (KafkaProducer<String, String> producer = createProducer(bootstrapServers)) {
+            produceFixedMessages(producer, topic, INITIAL_MESSAGES, THREADS, INITIAL_AWAIT_SECONDS);
+            producer.flush();
+        }
         // Fim
 
         System.out.printf("[%s] Finished producing %,d messages with flush%n",
