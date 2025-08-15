@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 class KarafkaApp < Karafka::App
-  BATCH_SIZE = 300
-  PARTITIONS = 12
+  BATCH_SIZE = 2000
+  PARTITIONS = 24
   REPLICATION_FACTOR = 1 # Sem replicação para simplificar o ambiente
   CLEANUP_POLICY = 'compact' # compact or delete
   RETENTION_MS = 604800000 # 7 days
@@ -91,7 +91,7 @@ class KarafkaApp < Karafka::App
   consumer_group :g1 do    
     topic :jobs do
       config(
-        partitions: 2,
+        partitions: PARTITIONS,
         # replication_factor:  REPLICATION_FACTOR,
         # 'cleanup.policy':    CLEANUP_POLICY,
         # 'retention.ms':      RETENTION_MS,

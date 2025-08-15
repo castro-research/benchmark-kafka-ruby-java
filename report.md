@@ -254,4 +254,82 @@ Então, ao dia de hoje, eu descarto o TruffleRuby e o JRuby para este tipo de te
 
 ### Teste#008
 
-[Working in Progress]
+Com base que não vamos tocar no consumer, uma das formas que podemos melhorar a performance é aumentar o número de workers, e o número de partições para paralelizar o processamento.
+
+Vamos analisar o cenário que temos 25 milhões de eventos, e estamos recebendo 100 mil eventos por minuto.
+
+O primeiro teste que vamos fazer, é manter o batch size em 2000, e aumentar o número de partições para 12, e o número de workers para 6. ( Já que sabemos que esse tópico é o que pode inflar o lag )
+
+Vamos analisar o resultado até o primeros 400 mil eventos após acumular 25 milhões de eventos.
+
+```
+event_type       |min_updated_at         |max_updated_at         |processados|tempo_total    |
+-----------------+-----------------------+-----------------------+-----------+---------------+
+ruby-purchase-250|2025-08-15 18:19:19.523|2025-08-15 18:21:03.090|     100000|00:01:43.567253|
+ruby-purchase-251|2025-08-15 18:16:54.710|2025-08-15 18:18:41.775|     100000|00:01:47.065431|
+ruby-purchase-252|2025-08-15 18:12:29.074|2025-08-15 18:13:50.541|     100000|00:01:21.467037|
+ruby-purchase-253|2025-08-15 18:19:12.868|2025-08-15 18:20:20.158|     100000|00:01:07.289736|
+ruby-purchase-254|2025-08-15 18:24:17.187|2025-08-15 18:25:19.861|     100000|00:01:02.673812|
+ruby-purchase-255|2025-08-15 18:21:37.297|2025-08-15 18:22:40.677|     100000|00:01:03.380015|
+ruby-visit       |2025-08-15 17:33:10.118|2025-08-15 18:43:52.062|   25000000|01:10:41.944246|
+----------------------------------------------------------------------------------------------
+SEPARADOR
+----------------------------------------------------------------------------------------------
+primeiro               |ultimo                 |tempo_total    |
+-----------------------+-----------------------+---------------+
+2025-08-15 17:33:10.118|2025-08-15 18:43:52.062|01:10:41.944246|
+```
+
+Processamos 25 milhões em cerca de 1 hora e 10 minutos, e o tempo médio por mensagem foi de 0,17 ms. Enquanto o tempo médio por lote foi de 1 minuto e 43 segundos.
+
+Agora são 18:48, e então desde o ultimo update no banco, acumulamos 500 mil eventos, pois passaram 5 minutos.
+
+Então sabemos que em uma hora, com as limitações atuais, resolveriamos o problema de lag, e ainda processaríamos os eventos novos.
+
+O segundo teste, é aumentar o número de partições para 24, e o número de workers para 12.
+
+```
+event_type       |min_updated_at         |max_updated_at         |processados|tempo_total    |
+-----------------+-----------------------+-----------------------+-----------+---------------+
+ruby-purchase-250|2025-08-15 19:27:32.878|2025-08-15 19:29:24.675|     100000|00:01:51.797211|
+ruby-purchase-251|2025-08-15 19:46:48.304|2025-08-15 19:48:01.768|     100000|00:01:13.463983|
+ruby-purchase-252|2025-08-15 19:29:33.487|2025-08-15 19:31:19.532|     100000|00:01:46.044973|
+ruby-purchase-253|2025-08-15 19:32:56.442|2025-08-15 19:34:25.215|     100000|00:01:28.773695|
+ruby-purchase-254|2025-08-15 19:20:45.002|2025-08-15 19:25:15.379|     100000|00:04:30.376931|
+ruby-purchase-255|2025-08-15 19:46:00.058|2025-08-15 19:46:58.720|     100000|00:00:58.661412|
+ruby-visit       |2025-08-15 18:55:26.117|2025-08-15 19:51:20.367|   25000000|00:55:54.250596|
+----------------------------------------------------------------------------------------------
+SEPARADOR
+----------------------------------------------------------------------------------------------
+primeiro               |ultimo                 |tempo_total    |
+-----------------------+-----------------------+---------------+
+2025-08-15 18:55:26.117|2025-08-15 19:51:20.367|00:55:54.250596|
+```
+
+Neste caso, processamos 25 milhões em cerca de 55 minutos, e o tempo médio por mensagem foi de 0,13 ms. Enquanto o tempo médio por lote foi de 1 minuto e 51 segundos.
+
+Embora temos um ganho de 15 minutos, estamos considerando que estamos recebendo a mensagem e fazendo insert no banco de dados, em uma tabela sem indices, e sem otimizações.
+
+Não estamos considerando também fazer bulk insert, ou usar COPY do Postgres, que poderia acelerar ainda mais o processo.
+
+E por fim, o terceiro teste que repete as condições do segundo teste, mas com o batch size aumentado para 10_000.
+
+```
+event_type       |min_updated_at         |max_updated_at         |processados|tempo_total    |
+-----------------+-----------------------+-----------------------+-----------+---------------+
+ruby-purchase-250|2025-08-15 20:39:34.887|2025-08-15 20:41:29.521|     100000|00:01:54.633365|
+ruby-purchase-251|2025-08-15 20:55:27.637|2025-08-15 20:56:58.429|     100000| 00:01:30.79272|
+ruby-purchase-252|2025-08-15 20:41:42.592|2025-08-15 20:43:31.771|     100000|00:01:49.178584|
+ruby-purchase-253|2025-08-15 20:44:57.307|2025-08-15 20:46:35.072|     100000|00:01:37.764596|
+ruby-purchase-254|2025-08-15 20:34:00.253|2025-08-15 20:38:38.456|     100000|00:04:38.202891|
+ruby-purchase-255|2025-08-15 20:55:00.122|2025-08-15 20:56:02.344|     100000|00:01:02.222142|
+ruby-visit       |2025-08-15 20:07:40.972|2025-08-15 21:00:22.994|   25000000|00:52:42.021869|
+----------------------------------------------------------------------------------------------
+SEPARADOR
+----------------------------------------------------------------------------------------------
+primeiro               |ultimo                 |tempo_total    |
+-----------------------+-----------------------+---------------+
+2025-08-15 20:07:40.972|2025-08-15 21:00:22.994|00:52:42.021869|
+```
+
+Neste caso, processamos 25 milhões em cerca de 52 minutos, e o tempo médio por mensagem foi de 0,11 ms. Enquanto o tempo médio por lote foi de 1 minuto e 54 segundos.

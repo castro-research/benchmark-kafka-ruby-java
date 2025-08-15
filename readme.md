@@ -66,6 +66,26 @@ se quiser entrar no container do Rails, use:
 docker compose run --rm -it console bash
 ```
 
+Escalar workers:
+
+```
+docker compose --profile worker up -d --scale mri-worker=12
+```
+
+
+## Usando o Swarm
+
+```
+docker swarm init
+docker stack deploy -c docker-compose.yml benchmark
+```
+
+Escalar os consumers do Swarm:
+
+```bash
+docker service scale benchmark_mri-worker=12
+```
+
 # Resultados
 
 Vou separar os resultados por teste, e cada teste terá um número de relevância de 0 a 10, onde 0 é irrelevante e 10 é extremamente relevante.
@@ -89,3 +109,11 @@ Todos resultados serão apresentados em ([`report.md`](report.md))
 
 ## Conclusões
 
+
+# Referências
+
+- [PostgreSQL Documentation: Populating a Database](https://www.postgresql.org/docs/current/populate.html)
+
+- [Speeding Up PostgreSQL Inserts](https://stackoverflow.com/questions/12206600/how-to-speed-up-insertion-performance-in-postgresql)
+
+- [Optimizing for Fast Testing](https://stackoverflow.com/questions/9407442/optimise-postgresql-for-fast-testing/9407940#9407940/)
