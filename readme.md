@@ -24,7 +24,7 @@ Eu vou tentar responder as seguintes perguntas:
 - [x] Criar um job que consome as mensagens com o payload do cenário
 - [x] Consumir os 1 milhão de mensagens do Kafka e popular o banco de dados Postgres
 - [x] Limitar hardware virtual do container para ser mais justo
-- [ ] Após enviar 1 milhão de mensagens, continuar produzindo mensagens continuamente
+- [x] Após enviar 1 milhão de mensagens, continuar produzindo mensagens continuamente
 - [ ] Fazer cálculos mais pesados no job ou fazer I/O mais pesado
 - [ ] Paralelizar o processamento de mensagens
 - [ ] Planejar e criar um benchmark para medir o tempo de processamento
