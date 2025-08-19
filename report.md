@@ -394,7 +394,13 @@ Então, o TruffleRuby conseguiu fazer o insert no banco de dados em cerca de 25 
 Vamos testar a mesma operação, usando a mesma abordagem do TruffleRuby, mas com o MRI.
 
 ```
-
+event_type        |min_updated_at         |max_updated_at         |processados|tempo_total|
+------------------+-----------------------+-----------------------+-----------+-----------+
+mri_pg_purchase-1|2025-08-19 17:56:27.000|2025-08-19 17:56:44.000|     100000|   00:00:17|
+mri_pg_purchase-2|2025-08-19 17:56:44.000|2025-08-19 17:56:59.000|     100000|   00:00:15|
+mri_pg_purchase-3|2025-08-19 17:56:59.000|2025-08-19 17:57:15.000|     100000|   00:00:16|
+mri_pg_purchase-4|2025-08-19 17:57:15.000|2025-08-19 17:57:32.000|     100000|   00:00:17|
+mri_pg_visit     |2025-08-19 17:53:43.000|2025-08-19 17:56:27.000|    1000000|   00:02:44|
 ```
 
 O MRI foi ainda mais rápido, e então vemos que o ActiveRecord está sendo um gargalo por enquanto.
