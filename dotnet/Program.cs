@@ -1,62 +1,70 @@
-using Confluent.Kafka;
-using System.Text.Json;
+using KafkaFlow;
+using KafkaFlow.Serializer;
 using Microsoft.EntityFrameworkCore;
-using static KioskEvent;
-using static AppDbContext;
-using System.Globalization;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using System.Text.Json;
 
-var config = new ConsumerConfig
-{
-    BootstrapServers = "kafka:29092",
-    GroupId = "test-consumer-group",
-    AutoOffsetReset = AutoOffsetReset.Earliest,
-    EnableAutoCommit = false
+const string Topic = "jobs";
+
+var builder = Host.CreateDefaultBuilder(args)
+    .ConfigureServices(services =>
+    {
+       
+        services.AddDbContextFactory<AppDbContext>(options =>
+            options.UseNpgsql(
+                Environment.GetEnvironmentVariable("DATABASE_URL")
+                ?? "Host=postgres;Username=bench;Password=bench;Database=bench"
+            )
+        );
+       
+        services.AddTransient<PersistKioskEventsMiddleware>();
+       
+        services.AddKafka(kafka => kafka
+            .UseConsoleLog()
+            .AddCluster(cluster => cluster
+                .WithBrokers(new[] { "kafka:29092" })
+                .AddConsumer(consumer => consumer
+                    .Topic(Topic)
+                    .WithGroupId("test-consumer-group")
+                    .WithBufferSize(2000)
+                    .WithWorkersCount(10)
+                    .AddMiddlewares(middlewares => middlewares
+                        .AddBatching(1, TimeSpan.FromMilliseconds(100)) // Vamos processar evento por evento
+                        .Add<PersistKioskEventsMiddleware>() 
+                    )
+                )
+                .AddProducer("producer-name", producer => producer
+                    .DefaultTopic(Topic)
+                    .AddMiddlewares(middlewares => middlewares 
+                        .AddSerializer<JsonCoreSerializer>() 
+                    )
+                )
+            )
+        );
+    });
+
+var host = builder.Build();
+
+// Handle graceful shutdown
+using var cts = new CancellationTokenSource();
+Console.CancelKeyPress += (_, e) => {
+    e.Cancel = true;
+    cts.Cancel();
 };
 
+var bus = host.Services.CreateKafkaBus();
 
-using var consumer = new ConsumerBuilder<Ignore, string>(config).Build();
-consumer.Subscribe("jobs");
+await bus.StartAsync();
+Console.WriteLine("✅ KafkaFlow consumer running. Press Ctrl+C to stop...");
 
-var cancellationToken = CancellationToken.None;
-
-// Build configuration to pass to AppDbContext
-var configuration = new ConfigurationBuilder()
-    .SetBasePath(Directory.GetCurrentDirectory())
-    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-    .AddJsonFile($"appsettings.Development.json", optional: true, reloadOnChange: true)
-    .AddEnvironmentVariables()
-    .Build();
-
-await using var context = new AppDbContext(configuration);
-Console.WriteLine("Starting to consume messages...");
-
-while (!cancellationToken.IsCancellationRequested)
+try
 {
-    var consumeResult = consumer.Consume(cancellationToken);
-    var messageJson = JsonSerializer.Deserialize<JsonElement>(consumeResult.Message.Value);
-    var eventType = messageJson.GetProperty("eventType").GetString();
-    var modifiedEventType = $"dotnet_{eventType}";
-    var eventTsString = messageJson.GetProperty("eventTs").GetString()!;
-    var eventTs = DateTime.Parse(eventTsString).ToUniversalTime();
-
-
-    var kioskEvent = new KioskEvent(
-        0,
-        messageJson.GetProperty("mallId").GetInt32(),
-        messageJson.GetProperty("kioskId").GetInt32(),
-        modifiedEventType,
-        eventTs,
-        messageJson.GetProperty("amountCents").GetInt32(),
-        messageJson.GetProperty("totalItems").GetInt32(),
-        messageJson.GetProperty("paymentMethod").GetInt32(),
-        messageJson.GetProperty("status").GetInt32()
-    );
-
-    context.KioskEvents.Add(kioskEvent);
-    await context.SaveChangesAsync();
-
-    // Libera memória
-    context.ChangeTracker.Clear();
-    consumer.Commit(consumeResult);
+    await Task.Delay(Timeout.Infinite, cts.Token);
 }
-consumer.Close();
+catch (OperationCanceledException)
+{
+    Console.WriteLine("🛑 Shutdown signal received...");
+}
+
+await bus.StopAsync();

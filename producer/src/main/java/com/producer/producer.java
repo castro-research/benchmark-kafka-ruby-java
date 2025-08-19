@@ -12,7 +12,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class producer {
-    private static final int INITIAL_MESSAGES = 25_000_000;
+    private static final int INITIAL_MESSAGES = 1_000_000;
     private static final int BATCH_SIZE = 100_000;
     private static final int THREADS = 32;
     private static final int INITIAL_AWAIT_SECONDS = 120;
@@ -32,10 +32,10 @@ public class producer {
 
         // Comentar essa parte para o Teste#006
         // Inicio
-        // try (KafkaProducer<String, String> producer = createProducer(bootstrapServers)) {
-        //     produceFixedMessages(producer, topic, INITIAL_MESSAGES, THREADS, INITIAL_AWAIT_SECONDS);
-        //     producer.flush();
-        // }
+        try (KafkaProducer<String, String> producer = createProducer(bootstrapServers)) {
+            produceFixedMessages(producer, topic, INITIAL_MESSAGES, THREADS, INITIAL_AWAIT_SECONDS);
+            producer.flush();
+        }
         // Fim
 
         System.out.printf("[%s] Finished producing %,d messages with flush%n",
@@ -81,10 +81,10 @@ public class producer {
         int cycle = 0;
         while (true) {
             // Esta seção é para o Teste#007 
-            if(cycle == 6) {
-                System.out.printf("[%s] Stopping after 4 cycles%n", LocalDateTime.now());
-                break;
-            }
+            // if(cycle == 6) {
+            //     System.out.printf("[%s] Stopping after 4 cycles%n", LocalDateTime.now());
+            //     break;
+            // }
             // Fim
             LocalDateTime batchStart = LocalDateTime.now();
             System.out.printf("[%s] Starting batch of %,d events%n", batchStart, batchSize);

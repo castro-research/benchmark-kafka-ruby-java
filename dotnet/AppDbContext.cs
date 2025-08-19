@@ -4,27 +4,31 @@ using static KioskEvent;
 
 public class AppDbContext : DbContext
 {
-    private readonly IConfiguration _configuration;
-
-    public AppDbContext(IConfiguration configuration)
+    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
-        _configuration = configuration;
     }
 
     public DbSet<KioskEvent> KioskEvents { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        if (!optionsBuilder.IsConfigured)
-        {
-            var connectionString = _configuration.GetConnectionString("DefaultConnection");
-            optionsBuilder.UseNpgsql(connectionString);
-        }
-    }
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<KioskEvent>()
-            .ToTable("kiosk_events");
+        // Não se preocupe com a marreta :)
+        modelBuilder.Entity<KioskEvent>(entity =>
+        {
+            entity.ToTable("kiosk_events");
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.MallId).HasColumnName("mall_id");
+            entity.Property(e => e.KioskId).HasColumnName("kiosk_id");
+            entity.Property(e => e.EventType).HasColumnName("event_type");
+            entity.Property(e => e.EventTs).HasColumnName("event_ts");
+            entity.Property(e => e.AmountCents).HasColumnName("amount_cents");
+            entity.Property(e => e.TotalItems).HasColumnName("total_items");
+            entity.Property(e => e.PaymentMethod).HasColumnName("payment_method");
+            entity.Property(e => e.Status).HasColumnName("status");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+        });
     }
 }

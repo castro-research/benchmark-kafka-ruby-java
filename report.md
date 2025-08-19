@@ -434,3 +434,24 @@ TruffleRuby com ActiveRecord: 54 segundos para 100 mil eventos.
 MRI sem ActiveRecord: 15 segundos para 100 mil eventos.
 MRI com ActiveRecord(callbacks): 45 segundos para 100 mil eventos.
 MRI 3.4.5 com ActiveRecord: 15 segundos para 100 mil eventos.
+
+
+# Test#010
+
+Esse report agora incluimos o .NET
+
+Usando a mesma abordagem do TruffleRuby / MRI, mas agora com o .NET, conseguimos o seguinte resultado:
+
+```
+event_type       |min_updated_at         |max_updated_at         |processados|tempo_total    |
+-----------------+-----------------------+-----------------------+-----------+---------------+
+dotnet_purchase-1|2025-08-19 17:36:50.767|2025-08-19 17:37:13.807|     100000|00:00:23.040179|
+dotnet_purchase-2|2025-08-19 17:37:13.380|2025-08-19 17:37:34.544|     100000|00:00:21.163883|
+dotnet_purchase-3|2025-08-19 17:37:34.101|2025-08-19 17:37:55.419|     100000|00:00:21.317306|
+dotnet_purchase-4|2025-08-19 17:37:54.970|2025-08-19 17:38:15.402|     100000|00:00:20.431834|
+dotnet_purchase-5|2025-08-19 17:38:14.936|2025-08-19 17:38:36.378|     100000|00:00:21.442204|
+dotnet_purchase-6|2025-08-19 17:38:35.892|2025-08-19 17:38:57.337|     100000|00:00:21.444979|
+dotnet_purchase-7|2025-08-19 17:38:56.897|2025-08-19 17:39:17.549|     100000| 00:00:20.65242|
+```
+
+O .NET conseguiu fazer o insert no banco de dados em cerca de 20 a 23 segundos, o que é um resultado muito bom.

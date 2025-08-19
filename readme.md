@@ -86,6 +86,12 @@ docker-compose up kafka kafka-ui postgres producer truffleruby-pg --build
 docker-compose up kafka kafka-ui postgres producer truffleruby-ar --build
 ```
 
+## Dotnet 9
+
+```bash
+docker-compose up kafka kafka-ui postgres producer truffleruby-ar --build
+```
+
 # Dicas
 
 se quiser entrar no container do Rails, use:
@@ -127,6 +133,8 @@ As ferramentas utilizadas para os testes serão:
 - Apache Kafka
 - Kafka UI
 - DBeaver
+- .NET 9
+- [Kafka Flow](https://farfetch.github.io/kafkaflow/docs/getting-started/create-your-first-application)
 
 ![Test 001 Results](.github/1.png)
 
