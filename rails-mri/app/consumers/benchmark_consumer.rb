@@ -24,7 +24,7 @@ class BenchmarkConsumer < ApplicationConsumer
     event_ts = Time.parse(payload['eventTs']) rescue nil
     event_type = "#{RUBY_ENGINE}-#{payload['eventType']}"
 
-    KioskEvent.create!(
+    KioskEvent.insert_all([
       mall_id: payload['mallId'],
       kiosk_id: payload['kioskId'],
       event_type: event_type,
@@ -33,6 +33,6 @@ class BenchmarkConsumer < ApplicationConsumer
       total_items: payload['totalItems'],
       payment_method: payload['paymentMethod'],
       status: payload['status'] || payload[:status]
-    )
+    ], returning: false)
   end
 end

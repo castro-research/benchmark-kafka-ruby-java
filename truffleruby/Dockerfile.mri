@@ -1,0 +1,9 @@
+FROM docker.io/library/ruby:3.4.5
+
+WORKDIR /app
+
+COPY . .
+
+EXPOSE 3000
+
+CMD ["ruby", "app.rb"]

@@ -2,8 +2,8 @@
 
 class KarafkaApp < Karafka::App
   BATCH_SIZE = 2000
-  PARTITIONS = 24
-  REPLICATION_FACTOR = 1 # Sem replicação para simplificar o ambiente
+  PARTITIONS = 1
+  REPLICATION_FACTOR = 2 # Sem replicação para simplificar o ambiente
   CLEANUP_POLICY = 'compact' # compact or delete
   RETENTION_MS = 604800000 # 7 days
   SEGMENT_BYTES = 1073741824 # 1 GB
