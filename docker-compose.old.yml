@@ -1,3 +1,31 @@
+x-mri-common: &mri_common
+  build:
+    context: ./rails-mri
+    dockerfile: Dockerfile
+  working_dir: /app
+  volumes:
+    - ./rails-mri:/app
+  environment: &mri_env
+    RAILS_ENV: production
+    DATABASE_URL: postgres://bench:bench@postgres:5432/bench
+    KAFKA_BROKERS: kafka:29092
+  depends_on:
+    postgres:
+      condition: service_healthy
+    kafka:
+      condition: service_healthy
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD", "bundle", "exec", "rails", "db:version"]
+    interval: 5s
+    timeout: 3s
+    retries: 30
+  deploy:
+    resources:
+      limits:
+        cpus: "2"
+        memory: 2G
+        
 services:
   kafka:
     image: apache/kafka:latest
@@ -67,41 +95,25 @@ services:
       retries: 30
 
   mri:
-    build:
-      context: ./rails-mri
-      dockerfile: Dockerfile
-    working_dir: /app
-    volumes:
-      - ./rails-mri:/app
+    <<: *mri_common
+    command: >
+      bash -lc "bundle exec rake karafka:start"
+
+  mri-worker:
+    <<: *mri_common
+    profiles: ["worker"]
     environment:
-      RAILS_ENV: production
-      DATABASE_URL: postgres://bench:bench@postgres:5432/bench
-      KAFKA_BROKERS: kafka:29092
+      <<: *mri_env
+      SKIP_SETUP: "true"
     depends_on:
       postgres:
         condition: service_healthy
       kafka:
         condition: service_healthy
-    # Garante que o schema exista antes de consumir
+      mri:
+        condition: service_healthy
     command: >
-      bash -lc "
-        (bundle check || bundle install) &&
-        bundle exec karafka topics create &&
-        DISABLE_DATABASE_ENVIRONMENT_CHECK=1 bundle exec rails db:drop db:create &&
-        bin/rails db:prepare &&
-        bundle exec karafka server
-      "
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "bundle", "exec", "rails", "db:version"]
-      interval: 5s
-      timeout: 3s
-      retries: 30
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
+      bash -lc "bundle exec rake karafka:start"
 
   console:
     build:
@@ -118,25 +130,39 @@ services:
       kafka:
         condition: service_healthy
   
-  # console_jruby:
-  #   build:
-  #     context: ./jruby
-  #     dockerfile: Dockerfile.truffleruby
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     mri:
-  #       condition: service_healthy
-  #   environment:
-  #     RAILS_ENV: production
-  #     DATABASE_URL: postgres://bench:bench@postgres/bench
-  #     KARAFKA_DISABLE_WARMUP: "true"
-  #     KAFKA_BROKERS: kafka:29092
-  #   volumes:
-  #     - ./jruby/:/app
-  #   working_dir: /app
-  #   command: >
-  #     bash -c "
-  #       bundle install &&
-  #       jruby consumer.rb
-  #     "
+  dotnet:
+    image: mcr.microsoft.com/dotnet/sdk:9.0
+    container_name: dotnet-sdk
+    working_dir: /app
+    volumes:
+      - ./dotnet:/app
+    command: ["dotnet", "run"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Username=bench;Password=bench;Database=bench"
+    depends_on:
+      postgres:
+        condition: service_healthy
+  
+
+  truffleruby:
+    build:
+      context: ./truffleruby
+      dockerfile: Dockerfile.truffleruby
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mri:
+        condition: service_healthy
+    environment:
+      RAILS_ENV: production
+      DATABASE_URL: postgres://bench:bench@postgres/bench
+      BOOTSTRAP_SERVERS: kafka:29092
+    volumes:
+      - ./truffleruby/:/app
+    working_dir: /app
+    command: >
+      bash -c "
+        bundle install &&
+        app.rb
+      "

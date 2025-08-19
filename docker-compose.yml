@@ -14,7 +14,8 @@ x-mri-common: &mri_common
       condition: service_healthy
     kafka:
       condition: service_healthy
-  restart: unless-stopped
+    setup:
+        condition: service_completed_successfully
   healthcheck:
     test: ["CMD", "bundle", "exec", "rails", "db:version"]
     interval: 5s
@@ -74,9 +75,9 @@ services:
       TOPIC: jobs
       MSGS: 1000
     depends_on:
+      setup:
+        condition: service_completed_successfully
       kafka:
-        condition: service_healthy
-      mri:
         condition: service_healthy
 
   postgres:
@@ -94,26 +95,20 @@ services:
       timeout: 3s
       retries: 30
 
-  mri:
+  setup:
     <<: *mri_common
-    command: >
-      bash -lc "bundle exec rake karafka:start"
-
-  mri-worker:
-    <<: *mri_common
-    profiles: ["worker"]
-    environment:
-      <<: *mri_env
-      SKIP_SETUP: "true"
     depends_on:
       postgres:
         condition: service_healthy
       kafka:
         condition: service_healthy
-      mri:
-        condition: service_healthy
     command: >
-      bash -lc "bundle exec rake karafka:start"
+      bash -lc "bundle install && bundle exec rake karafka:setup && /bin/sh -c "exit 0""
+
+  mri:
+    <<: *mri_common
+    command: >
+      bash -lc "bundle install && bundle exec rake karafka:start"
 
   console:
     build:
@@ -125,29 +120,108 @@ services:
     environment:
       DATABASE_URL: postgres://bench:bench@postgres:5432/bench
     depends_on:
+      setup:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       kafka:
         condition: service_healthy
   
-  truffleruby:
+  truffleruby-pg:
     build:
       context: ./truffleruby
       dockerfile: Dockerfile.truffleruby
     depends_on:
       postgres:
         condition: service_healthy
-      mri:
-        condition: service_healthy
+      setup:
+        condition: service_completed_successfully
     environment:
       RAILS_ENV: production
       DATABASE_URL: postgres://bench:bench@postgres/bench
       BOOTSTRAP_SERVERS: kafka:29092
+      ENGINE: truffleruby_pg
     volumes:
       - ./truffleruby/:/app
     working_dir: /app
     command: >
+      bash -c "bundle install && ruby app_pg.rb"
+
+  truffleruby-ar:
+    build:
+      context: ./truffleruby
+      dockerfile: Dockerfile.truffleruby
+    depends_on:
+      postgres:
+        condition: service_healthy
+      setup:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgres://bench:bench@postgres/bench
+      BOOTSTRAP_SERVERS: kafka:29092
+      ENGINE: truffleruby_ar
+    volumes:
+      - ./truffleruby/:/app
+    working_dir: /app
+    command: >
+      bash -c "bundle install && ruby app.rb"
+  
+  mri-pg:
+    build:
+      context: ./truffleruby
+      dockerfile: Dockerfile.mri
+    depends_on:
+      postgres:
+        condition: service_healthy
+      setup:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgres://bench:bench@postgres/bench
+      BOOTSTRAP_SERVERS: kafka:29092
+      ENGINE: mri_pg
+    volumes:
+      - ./truffleruby/:/app
+    working_dir: /app
+    command: >
+      bash -c "bundle install && ruby app_pg.rb"
+
+  mri-ar:
+    build:
+      context: ./truffleruby
+      dockerfile: Dockerfile.mri
+    depends_on:
+      postgres:
+        condition: service_healthy
+      setup:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgres://bench:bench@postgres/bench
+      BOOTSTRAP_SERVERS: kafka:29092
+      ENGINE: mri_ar
+    volumes:
+      - ./truffleruby/:/app
+    working_dir: /app
+    command: >
+      bash -c "bundle install && ruby app.rb"
+
+  console_jruby:
+    build:
+      context: ./jruby
+      dockerfile: Dockerfile.truffleruby
+    depends_on:
+      postgres:
+        condition: service_healthy
+      setup:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgres://bench:bench@postgres/bench
+      KARAFKA_DISABLE_WARMUP: "true"
+      KAFKA_BROKERS: kafka:29092
+    volumes:
+      - ./jruby/:/app
+    working_dir: /app
+    command: >
       bash -c "
         bundle install &&
-        ruby app_ar.rb
+        jruby consumer.rb
       "

@@ -54,8 +54,36 @@ Imagina que temos 1 milhão de mensagens para processar, e cada mensagem é um J
 
 # Iniciar Benchmark
 
+## MRI (Rails)
+ 
 ```bash
-docker-compose up --build
+docker-compose up kafka kafka-ui postgres producer setup mri --build
+```
+
+
+## MRI sem Rails e com Active record
+
+```bash
+docker-compose up kafka kafka-ui postgres producer mri-ar --build
+```
+
+
+## MRI sem Rails e sem Active record
+
+```bash
+docker-compose up kafka kafka-ui postgres producer mri-pg --build
+```
+
+## Truffleruby sem Active record
+
+```bash
+docker-compose up kafka kafka-ui postgres producer truffleruby-pg --build
+```
+
+## Truffleruby com Active record
+
+```bash
+docker-compose up kafka kafka-ui postgres producer truffleruby-ar --build
 ```
 
 # Dicas

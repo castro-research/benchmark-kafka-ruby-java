@@ -1,23 +1,20 @@
 require "rdkafka"
-require "pg"
+require "active_record"
 require "json"
 
-# PostgreSQL connection using DATABASE_URL
-conn = PG.connect(ENV.fetch("DATABASE_URL"))
+ActiveRecord::Base.establish_connection(
+    url: ENV.fetch("DATABASE_URL"),
+    pool: 5
+)
 
-# Prepare the insert statement for better performance
-insert_sql = <<~SQL
-    INSERT INTO kiosk_events (
-        mall_id, kiosk_id, event_type, event_ts, amount_cents, 
-        total_items, payment_method, status, created_at, updated_at
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-SQL
+class KioskEvent < ActiveRecord::Base
+    self.table_name = "kiosk_events"
+end
 
-conn.prepare("insert_kiosk_event", insert_sql)
-
+engine = ENV.fetch("ENGINE", "unknown")
 config = {
-        "bootstrap.servers" => ENV.fetch("BOOTSTRAP_SERVERS", "localhost:9092"),
-        "group.id"          => ENV.fetch("GROUP_ID", "g1"),
+    "bootstrap.servers" => ENV.fetch("BOOTSTRAP_SERVERS", "localhost:9092"),
+    "group.id"          => engine,
 }
 
 topic = ENV.fetch("TOPIC", "jobs")
@@ -26,43 +23,38 @@ rdkafka = Rdkafka::Config.new(config)
 consumer = rdkafka.consumer
 consumer.subscribe(topic)
 
-cleanup = proc do
-    puts "\nEncerrando..."
-    consumer.close
-    conn.close
-    exit 0
-end
+trap("INT")  { puts "\nEncerrando..."; consumer.close; exit 0 }
+trap("TERM") { puts "\nEncerrando..."; consumer.close; exit 0 }
 
-trap("INT", &cleanup)
-trap("TERM", &cleanup)
+puts "[AR]: Consumindo de #{topic}…"
+puts "using engine #{engine}"
 
-puts "Consumindo de #{topic}…"
 loop do
-        begin
-                msg = consumer.poll(10)
-                next unless msg
+    begin
+        msg = consumer.poll(10)
+        next unless msg
 
-                payload = JSON.parse(msg.payload, symbolize_names: true)
-                begin
-                        event_type = "truffleruby_#{payload[:eventType]}"
-                        now = Time.now
-                        
-                        conn.exec_prepared("insert_kiosk_event", [
-                                payload[:mallId],
-                                payload[:kioskId],
-                                event_type,
-                                payload[:eventTs],
-                                payload[:amountCents],
-                                payload[:totalItems],
-                                payload[:paymentMethod],
-                                payload[:status] || payload["status"],
-                                now,
-                                now
-                        ])
-                rescue PG::Error => e
-                        warn "Database error: #{e}"
-                end
-        rescue Rdkafka::RdkafkaError => e
-                warn "Exceção rdkafka: #{e}"
+        payload = JSON.parse(msg.payload, symbolize_names: true)
+        begin
+            # Pra diferenciar
+            event_type = "#{engine}_#{payload[:eventType]}"
+            
+            KioskEvent.create!(
+                mall_id: payload[:mallId],
+                kiosk_id: payload[:kioskId],
+                event_type: event_type,
+                event_ts: payload[:eventTs],
+                amount_cents: payload[:amountCents],
+                total_items: payload[:totalItems],
+                payment_method: payload[:paymentMethod],
+                status: payload[:status] || payload["status"],
+                created_at: Time.now,
+                updated_at: Time.now
+            )
+        rescue ActiveRecord::RecordInvalid, ActiveRecord::ActiveRecordError => e
+            warn "Database error: #{e}"
         end
+    rescue Rdkafka::RdkafkaError => e
+        warn "Exceção rdkafka: #{e}"
+    end
 end

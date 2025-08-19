@@ -345,30 +345,92 @@ Usando apenas gem com extensões nativas em C, e sem usar o Rails.
 Ao usar o ActiveRecord com pool de conexões, o TruffleRuby conseguiu o mesmo resultado que o MRI, em questão de tempo.
 
 ```
-event_type            |min_updated_at         |max_updated_at         |processados|tempo_total|
-----------------------+-----------------------+-----------------------+-----------+-----------+
-truffleruby_purchase-0|2025-08-19 12:45:27.000|2025-08-19 12:46:19.619|     100000|   00:00:52|
-truffleruby_purchase-1|2025-08-19 12:46:19.000|2025-08-19 12:47:05.000|     100000|   00:00:46|
-truffleruby_purchase-2|2025-08-19 12:47:05.000|2025-08-19 12:47:50.614|     100000|   00:00:45|
-truffleruby_purchase-3|2025-08-19 12:47:50.000|2025-08-19 12:48:35.000|     100000|   00:00:45|
-truffleruby_purchase-4|2025-08-19 12:48:35.000|2025-08-19 12:49:20.784|     100000|   00:00:45|
-truffleruby_purchase-5|2025-08-19 12:49:20.000|2025-08-19 12:50:05.000|     100000|   00:00:45|
+event_type               |min_updated_at         |max_updated_at         |processados|tempo_total    |
+-------------------------+-----------------------+-----------------------+-----------+---------------+
+truffleruby_ar_purchase-0|2025-08-19 15:09:32.000|2025-08-19 15:10:26.000|     100000|       00:00:54|
+truffleruby_ar_purchase-1|2025-08-19 15:10:26.000|2025-08-19 15:11:13.000|     100000|       00:00:47|
+truffleruby_ar_purchase-2|2025-08-19 15:11:13.000|2025-08-19 15:11:59.000|     100000|       00:00:46|
+truffleruby_ar_purchase-3|2025-08-19 15:11:59.000|2025-08-19 15:12:46.000|     100000|       00:00:47|
+truffleruby_ar_purchase-4|2025-08-19 15:12:46.000|2025-08-19 15:13:33.000|     100000|       00:00:47|
+truffleruby_ar_purchase-5|2025-08-19 15:13:33.000|2025-08-19 15:14:20.501|     100000|00:00:47.501605|
 ```
 
-Isso me intrigou um pouco, e usei apenas o PG para fazer o insert no banco de dados.
+Isso me leva ao motivo dos callbacks do ActiveRecord serem tão lentos, e o por que o TruffleRuby não conseguiu ter um ganho de performance significativo.
 
-E tive o seguinte resultado:
+Sem callbacks, o resultado foi o seguinte:
 
 ```
-event_type            |min_updated_at         |max_updated_at         |processados|tempo_total|
-----------------------+-----------------------+-----------------------+-----------+-----------+
-truffleruby_purchase-1|2025-08-19 12:09:19.000|2025-08-19 12:09:44.000|     100000|   00:00:25|
-truffleruby_purchase-2|2025-08-19 12:09:44.000|2025-08-19 12:10:09.000|     100000|   00:00:25|
-truffleruby_purchase-3|2025-08-19 12:10:09.000|2025-08-19 12:11:04.000|     100000|   00:00:55|
-truffleruby_purchase-4|2025-08-19 12:10:25.000|2025-08-19 12:11:13.000|     100000|   00:00:48|
-truffleruby_purchase-5|2025-08-19 12:10:40.000|2025-08-19 12:11:23.000|     100000|   00:00:43|
+event_type               |min_updated_at         |max_updated_at         |processados|tempo_total|
+-------------------------+-----------------------+-----------------------+-----------+-----------+
+truffleruby_ar_purchase-0|2025-08-19 14:51:39.000|2025-08-19 14:52:12.000|     100000|   00:00:33|
+truffleruby_ar_purchase-1|2025-08-19 14:52:12.000|2025-08-19 14:52:38.000|     100000|   00:00:26|
+truffleruby_ar_purchase-2|2025-08-19 14:52:38.000|2025-08-19 14:53:04.000|     100000|   00:00:26|
+truffleruby_ar_purchase-3|2025-08-19 14:53:04.000|2025-08-19 14:53:29.000|     100000|   00:00:25|
+truffleruby_ar_purchase-4|2025-08-19 14:53:29.000|2025-08-19 14:53:54.000|     100000|   00:00:25|
+truffleruby_ar_purchase-5|2025-08-19 14:53:54.000|2025-08-19 14:54:19.000|     100000|   00:00:25|
 ```
 
-O tempo do 3, 4 e 5 foram maiores, por que o TruffleRuby estava balanceando entre as partições, e como eu calculo o inicio e o fim, traz um resultado com falso positivo.
+Isso me intrigou um pouco, por que a passagem pelos callbacks faz cada insert demorar o dobro do tempo.
 
-Os dois primeiros foram inserts diretos, sem balancear entre as partições.
+Já que não estamos usando callbacks, e se usarmos direto o PG?
+
+Vamos fazer o mesmo teste, mas usando o TruffleRuby com o PG puro, sem ActiveRecord:
+
+Resultado:
+
+```
+event_type               |min_updated_at         |max_updated_at         |processados|tempo_total|
+-------------------------+-----------------------+-----------------------+-----------+-----------+
+truffleruby_pg_purchase-0|2025-08-19 14:39:29.000|2025-08-19 14:39:55.000|     100000|   00:00:26|
+truffleruby_pg_purchase-1|2025-08-19 14:39:55.000|2025-08-19 14:40:20.000|     100000|   00:00:25|
+truffleruby_pg_purchase-2|2025-08-19 14:40:20.000|2025-08-19 14:40:45.000|     100000|   00:00:25|
+truffleruby_pg_purchase-3|2025-08-19 14:40:45.000|2025-08-19 14:41:12.000|     100000|   00:00:27|
+truffleruby_pg_purchase-4|2025-08-19 14:41:12.000|2025-08-19 14:41:43.000|     100000|   00:00:31|
+truffleruby_pg_purchase-5|2025-08-19 14:41:43.000|2025-08-19 14:42:08.000|     100000|   00:00:25|
+```
+
+Então, o TruffleRuby conseguiu fazer o insert no banco de dados em cerca de 25 segundos, enquanto o MRI levou cerca de 45 segundos. O que me leva a crer que o gargalo no MRI é o ActiveRecord, e não o CRuby em si.
+
+Vamos testar a mesma operação, usando a mesma abordagem do TruffleRuby, mas com o MRI.
+
+```
+
+```
+
+O MRI foi ainda mais rápido, e então vemos que o ActiveRecord está sendo um gargalo por enquanto.
+
+Será que podemos ter ganho de performance com o ActiveRecord?
+
+Ao fazer skip de validações, callbacks, e usar o `insert_all` do ActiveRecord, conseguimos o seguinte resultado:
+
+```
+event_type       |min_updated_at         |max_updated_at         |processados|tempo_total|
+-----------------+-----------------------+-----------------------+-----------+-----------+
+mri_pg_purchase-0|2025-08-19 15:35:50.000|2025-08-19 15:36:05.000|     100000|   00:00:15|
+mri_pg_purchase-1|2025-08-19 15:36:05.000|2025-08-19 15:36:22.000|     100000|   00:00:17|
+mri_pg_purchase-2|2025-08-19 15:36:22.000|2025-08-19 15:36:38.000|     100000|   00:00:16|
+mri_pg_purchase-3|2025-08-19 15:36:38.000|2025-08-19 15:36:53.000|     100000|   00:00:15|
+mri_pg_purchase-4|2025-08-19 15:36:53.000|2025-08-19 15:37:10.000|     100000|   00:00:17|
+mri_pg_purchase-5|2025-08-19 15:37:10.000|2025-08-19 15:37:26.000|     100000|   00:00:16|
+```
+
+Eu fiz um comparativo com o Ruby MRI 3.4.5 que traz melhorias em performance em ARM e x64, mas o resultado foi semelhante:
+
+```
+event_type       |min_updated_at         |max_updated_at         |processados|tempo_total|
+-----------------+-----------------------+-----------------------+-----------+-----------+
+mri_pg_purchase-0|2025-08-19 15:39:26.000|2025-08-19 15:39:41.000|     100000|   00:00:15|
+mri_pg_purchase-1|2025-08-19 15:39:41.000|2025-08-19 15:39:58.000|     100000|   00:00:17|
+mri_pg_purchase-2|2025-08-19 15:39:58.000|2025-08-19 15:40:14.000|     100000|   00:00:16|
+mri_pg_purchase-3|2025-08-19 15:40:14.000|2025-08-19 15:40:30.000|     100000|   00:00:16|
+mri_pg_purchase-4|2025-08-19 15:40:30.000|2025-08-19 15:40:47.000|     100000|   00:00:17|
+mri_pg_purchase-5|2025-08-19 15:40:47.000|2025-08-19 15:41:04.000|     100000|   00:00:17|
+```
+
+Em resumo:
+
+TruffleRuby sem ActiveRecord: 25 segundos para 100 mil eventos.
+TruffleRuby com ActiveRecord: 54 segundos para 100 mil eventos.
+MRI sem ActiveRecord: 15 segundos para 100 mil eventos.
+MRI com ActiveRecord(callbacks): 45 segundos para 100 mil eventos.
+MRI 3.4.5 com ActiveRecord: 15 segundos para 100 mil eventos.
