@@ -1,5 +1,6 @@
 class BenchmarkConsumer < ApplicationConsumer
   def consume
+    sleep 100000
     messages.each do |message|
       begin
         process_message(message)

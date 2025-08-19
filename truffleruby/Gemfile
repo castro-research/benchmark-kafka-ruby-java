@@ -1,0 +1,5 @@
+source "https://rubygems.org"
+
+gem 'rdkafka'
+gem 'pg'
+gem 'activerecord'

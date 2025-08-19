@@ -333,3 +333,36 @@ primeiro               |ultimo                 |tempo_total    |
 ```
 
 Neste caso, processamos 25 milhões em cerca de 52 minutos, e o tempo médio por mensagem foi de 0,11 ms. Enquanto o tempo médio por lote foi de 1 minuto e 54 segundos.
+
+# Teste#009
+
+Lendo um dos papers do [TruffleRuby](https://ssw.jku.at/General/Staff/Daloze/thread-safe-collections.pdf), tive um insight interessante, por que eles conseguiram 15.5x mais performance que o MRI, e 1.9x mais que o JRuby usando 8 threads.
+
+E então pensei em voltar a usar o TruffleRuby, mas com uma abordagem diferente.
+
+Usando apenas gem com extensões nativas em C, e sem usar o Rails.
+
+Ao usar o ActiveRecord com pool de conexões, o TruffleRuby conseguiu o mesmo resultado que o MRI, em questão de tempo.
+
+```
+
+```
+
+
+Isso me intrigou um pouco, e usei apenas o PG para fazer o insert no banco de dados.
+
+E tive o seguinte resultado:
+
+```
+event_type            |min_updated_at         |max_updated_at         |processados|tempo_total|
+----------------------+-----------------------+-----------------------+-----------+-----------+
+truffleruby_purchase-1|2025-08-19 12:09:19.000|2025-08-19 12:09:44.000|     100000|   00:00:25|
+truffleruby_purchase-2|2025-08-19 12:09:44.000|2025-08-19 12:10:09.000|     100000|   00:00:25|
+truffleruby_purchase-3|2025-08-19 12:10:09.000|2025-08-19 12:11:04.000|     100000|   00:00:55|
+truffleruby_purchase-4|2025-08-19 12:10:25.000|2025-08-19 12:11:13.000|     100000|   00:00:48|
+truffleruby_purchase-5|2025-08-19 12:10:40.000|2025-08-19 12:11:23.000|     100000|   00:00:43|
+```
+
+O tempo do 3, 4 e 5 foram maiores, por que o TruffleRuby estava balanceando entre as partições, e como eu calculo o inicio e o fim, traz um resultado com falso positivo.
+
+Os dois primeiros foram inserts diretos, sem balancear entre as partições.

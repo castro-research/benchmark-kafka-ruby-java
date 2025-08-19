@@ -118,7 +118,7 @@ services:
       kafka:
         condition: service_healthy
   
-  # console_truffleruby:
+  # console_jruby:
   #   build:
   #     context: ./jruby
   #     dockerfile: Dockerfile.truffleruby

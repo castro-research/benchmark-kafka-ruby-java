@@ -130,6 +130,21 @@ services:
       kafka:
         condition: service_healthy
   
+  dotnet:
+    image: mcr.microsoft.com/dotnet/sdk:9.0
+    container_name: dotnet-sdk
+    working_dir: /app
+    volumes:
+      - ./dotnet:/app
+    command: ["dotnet", "run"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Username=bench;Password=bench;Database=bench"
+    depends_on:
+      postgres:
+        condition: service_healthy
+  
+
   truffleruby:
     build:
       context: ./truffleruby
@@ -149,5 +164,5 @@ services:
     command: >
       bash -c "
         bundle install &&
-        ruby app_ar.rb
+        app.rb
       "
