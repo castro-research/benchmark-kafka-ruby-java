@@ -345,9 +345,15 @@ Usando apenas gem com extensões nativas em C, e sem usar o Rails.
 Ao usar o ActiveRecord com pool de conexões, o TruffleRuby conseguiu o mesmo resultado que o MRI, em questão de tempo.
 
 ```
-
+event_type            |min_updated_at         |max_updated_at         |processados|tempo_total|
+----------------------+-----------------------+-----------------------+-----------+-----------+
+truffleruby_purchase-0|2025-08-19 12:45:27.000|2025-08-19 12:46:19.619|     100000|   00:00:52|
+truffleruby_purchase-1|2025-08-19 12:46:19.000|2025-08-19 12:47:05.000|     100000|   00:00:46|
+truffleruby_purchase-2|2025-08-19 12:47:05.000|2025-08-19 12:47:50.614|     100000|   00:00:45|
+truffleruby_purchase-3|2025-08-19 12:47:50.000|2025-08-19 12:48:35.000|     100000|   00:00:45|
+truffleruby_purchase-4|2025-08-19 12:48:35.000|2025-08-19 12:49:20.784|     100000|   00:00:45|
+truffleruby_purchase-5|2025-08-19 12:49:20.000|2025-08-19 12:50:05.000|     100000|   00:00:45|
 ```
-
 
 Isso me intrigou um pouco, e usei apenas o PG para fazer o insert no banco de dados.
 
