@@ -118,7 +118,7 @@ Todos resultados serão apresentados em ([`report.md`](report.md))
 
 Nessa pesquisa de algumas semanas, deu para ter algumas conclusões, em um cenário muito específico.
 
-Se nos limitarmos ao cenário onde fazemos insert um evento de cada vez, sem considerar regras de negócio, sem considerar possibilidade de fazer inserção em lotes (que aumenta drásticamente, de 20 segundos para 2 segundos), e sem considerar multiplas threads / workers, temos o seguinte resultado:
+Se nos limitarmos ao cenário onde fazemos insert um evento de cada vez, sem considerar regras de negócio, sem considerar possibilidade de fazer inserção em lotes (que diminui drásticamente, de 20 segundos para 2 segundos), e sem considerar multiplas threads / workers, temos o seguinte resultado:
 
 ![Results](output/grafico.png)
 
