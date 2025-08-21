@@ -26,29 +26,6 @@ Eu vou tentar responder as seguintes perguntas:
 - [x] Limitar hardware virtual do container para ser mais justo
 - [x] Após enviar 1 milhão de mensagens, continuar produzindo mensagens continuamente
 
-# Preparação do ambiente
-
-Primeiro, os parametros do Postgres não terão nenhum ajuste de desempenho.
-
-No Kafka, nosso tópico terá as seguintes configurações padrões:
-
-| Configuração         | Valor padrão (`ENV`) | Descrição                              | O que significa?           |
-|----------------------|----------------------|----------------------------------------|----------------------------|
-| partitions           | 12                   | Número de partições                    | 12 partições               |
-| replication_factor   | 1                    | Fator de replicação                    | 1 cópia                    |
-| cleanup.policy       | compact              | Política de limpeza                    | Compactar dados            |
-| retention.ms         | 604800000            | Retenção em milissegundos              | 7 dias                     |
-| segment.bytes        | 1073741824           | Tamanho do segmento (bytes)            | 1 GB                       |
-| max.message.bytes    | 20971520             | Tamanho máx. da mensagem (bytes)       | 20 MB                      |
-| compression.type     | gzip                 | Tipo de compressão                     | GZIP                       |
-| max.poll.records     | 1000                 | Máximo de registros por poll           | 1000 registros             |
-| batch.size           | 200                  | Tamanho do lote                        | 200 mensagens              |
-
-
-Sabendo que nosso maior vilão será I/O, vamos adicionar conexão de dados persistente ao Postgres.
-
-Imagina que temos 1 milhão de mensagens para processar, e cada mensagem é um JSON que vai popular o banco.
-
 # Iniciar Benchmark
 
 ## MRI (Rails)
