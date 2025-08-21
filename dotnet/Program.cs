@@ -30,7 +30,7 @@ var builder = Host.CreateDefaultBuilder(args)
                     .WithBufferSize(2000)
                     .WithWorkersCount(10)
                     .AddMiddlewares(middlewares => middlewares
-                        .AddBatching(1, TimeSpan.FromMilliseconds(100)) // Vamos processar evento por evento
+                        .AddBatching(2000, TimeSpan.FromSeconds(1))
                         .Add<PersistKioskEventsMiddleware>() 
                     )
                 )

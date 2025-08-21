@@ -12,7 +12,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class producer {
-    private static final int INITIAL_MESSAGES = 1_000_000;
+    private static final int INITIAL_MESSAGES = 50_000_000;
     private static final int BATCH_SIZE = 100_000;
     private static final int THREADS = 32;
     private static final int INITIAL_AWAIT_SECONDS = 120;
@@ -81,11 +81,12 @@ public class producer {
         int cycle = 0;
         while (true) {
             // Esta seção é para o Teste#007 
-            // if(cycle == 6) {
-            //     System.out.printf("[%s] Stopping after 4 cycles%n", LocalDateTime.now());
-            //     break;
-            // }
+            if(cycle == 10) {
+                System.out.printf("[%s] Stopping after 10 cycles%n", LocalDateTime.now());
+                break;
+            }
             // Fim
+            
             LocalDateTime batchStart = LocalDateTime.now();
             System.out.printf("[%s] Starting batch of %,d events%n", batchStart, batchSize);
 
